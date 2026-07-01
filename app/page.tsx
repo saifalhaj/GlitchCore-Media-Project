@@ -9,6 +9,7 @@ import { UploadZone } from "@/components/UploadZone";
 import { DEFAULT_PARAMS, MODES, type Params, type ParamValue } from "@/lib/modes";
 import type { ModeId } from "@/lib/effects/types";
 import { decodeToImageData, resizeImageData } from "@/lib/image";
+import { readRecipeFromLocation, recipeToUrl } from "@/lib/recipe";
 
 function freshParams(): Record<ModeId, Params> {
   return Object.fromEntries(
@@ -27,8 +28,28 @@ export default function Home() {
 
   const baseRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const didMount = useRef(false);
 
   const mode = MODES[activeMode];
+
+  // Restore a shared recipe (mode + params) from the URL on first load.
+  useEffect(() => {
+    const r = readRecipeFromLocation();
+    if (r) {
+      setActiveMode(r.mode);
+      setParams(r.params);
+    }
+  }, []);
+
+  // Keep the URL in sync with state (skip the first run so a shared link's query
+  // survives until the user actually changes something). replaceState = no history spam.
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    window.history.replaceState(null, "", recipeToUrl(activeMode, params));
+  }, [activeMode, params]);
 
   const loadImage = async (src: Blob | string, name: string) => {
     try {
@@ -115,6 +136,7 @@ export default function Home() {
           baseRef={baseRef}
           overlayRef={overlayRef}
           asciiText={asciiText}
+          recipeUrl={recipeToUrl(activeMode, params)}
           disabled={!source}
         />
       </footer>
