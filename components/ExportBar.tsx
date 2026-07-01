@@ -10,14 +10,16 @@ export function ExportBar({
   overlayRef,
   asciiText,
   recipeUrl,
-  disabled,
+  canExportImage,
+  isVideo,
 }: {
   mode: ModeId;
   baseRef: RefObject<HTMLCanvasElement | null>;
   overlayRef: RefObject<HTMLCanvasElement | null>;
   asciiText: string | null;
   recipeUrl: string;
-  disabled: boolean;
+  canExportImage: boolean;
+  isVideo: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -53,37 +55,46 @@ export function ExportBar({
   return (
     <div className="flex items-center justify-between gap-4">
       <p className="hidden font-mono text-[11px] text-[var(--text-muted)] sm:block">
-        everything runs locally — nothing is uploaded
+        {isVideo
+          ? "video export runs in your browser — nothing is uploaded"
+          : "everything runs locally — nothing is uploaded"}
       </p>
       <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={copyLink}
-          disabled={disabled}
-          className="rounded-[var(--radius-sm)] border border-[var(--hairline)] px-3.5 py-2 text-sm text-[var(--text)] transition-colors hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-[var(--radius-sm)] border border-[var(--hairline)] px-3.5 py-2 text-sm text-[var(--text)] transition-colors hover:border-[var(--accent)]"
           title="Copy a link that reproduces this mode and its settings"
         >
           {linkCopied ? "Link copied" : "Copy link"}
         </button>
-        {mode === "ascii" && (
-          <button
-            type="button"
-            onClick={copyText}
-            disabled={disabled || !asciiText}
-            className="rounded-[var(--radius-sm)] border border-[var(--hairline)] px-3.5 py-2 text-sm text-[var(--text)] transition-colors hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {copied ? "Copied" : "Copy as text"}
-          </button>
+        {isVideo ? (
+          <span className="font-mono text-[11px] text-[var(--text-muted)]">
+            use “Export clip” on the stage →
+          </span>
+        ) : (
+          <>
+            {mode === "ascii" && (
+              <button
+                type="button"
+                onClick={copyText}
+                disabled={!canExportImage || !asciiText}
+                className="rounded-[var(--radius-sm)] border border-[var(--hairline)] px-3.5 py-2 text-sm text-[var(--text)] transition-colors hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {copied ? "Copied" : "Copy as text"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={downloadPng}
+              disabled={!canExportImage}
+              className="rounded-[var(--radius-sm)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ background: "var(--accent)" }}
+            >
+              Download PNG
+            </button>
+          </>
         )}
-        <button
-          type="button"
-          onClick={downloadPng}
-          disabled={disabled}
-          className="rounded-[var(--radius-sm)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ background: "var(--accent)" }}
-        >
-          Download PNG
-        </button>
       </div>
     </div>
   );

@@ -4,15 +4,19 @@ import { useRef, useState } from "react";
 
 export function UploadZone({
   onImage,
+  onVideo,
 }: {
   onImage: (src: Blob, name: string) => void;
+  onVideo: (src: Blob, name: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
   const pick = (files: FileList | null) => {
     const f = files?.[0];
-    if (f && f.type.startsWith("image/")) onImage(f, f.name);
+    if (!f) return;
+    if (f.type.startsWith("video/")) onVideo(f, f.name);
+    else if (f.type.startsWith("image/")) onImage(f, f.name);
   };
 
   return (
@@ -51,7 +55,7 @@ export function UploadZone({
         </svg>
         <div className="space-y-1">
           <p className="text-base font-medium text-[var(--text)]">
-            Drop an image to begin
+            Drop an image or video to begin
           </p>
           <p className="font-mono text-xs text-[var(--text-muted)]">
             drag &amp; drop · click browse · or paste
@@ -68,7 +72,7 @@ export function UploadZone({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           hidden
           onChange={(e) => pick(e.target.files)}
         />

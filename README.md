@@ -20,6 +20,15 @@ mode, so the switcher doubles as a gallery of what the tool does.
 Each effect is a pure function in [`lib/effects/`](lib/effects) — independently
 testable and swappable.
 
+## Video
+
+Load a video (**Open…** in the header, or drag-drop) and the four pixel effects
+apply **per-frame** live in the browser. **Export clip** records a sub-10s WebM
+via `MediaRecorder` + `canvas.captureStream()` — no upload, no server. YOLO is
+stills-only (per-frame detection is too slow). The working frame is capped to
+640px / 25fps to keep playback near real-time; port the effects to WebGL/WebGPU
+shaders if you want smoother HD.
+
 ## Stack
 
 - **Next.js 16** (App Router) + **React 19** + **TypeScript**

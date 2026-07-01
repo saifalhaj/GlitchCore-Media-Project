@@ -119,15 +119,19 @@ export function clearCanvas(canvas: HTMLCanvasElement): void {
   if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+/** Trigger a browser download of a Blob. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** Trigger a browser download of a canvas as PNG. */
 export function downloadCanvas(canvas: HTMLCanvasElement, filename: string): void {
   canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (blob) downloadBlob(blob, filename);
   }, "image/png");
 }
