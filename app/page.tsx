@@ -5,18 +5,13 @@ import { CanvasStage, type Stats } from "@/components/CanvasStage";
 import { ExportBar } from "@/components/ExportBar";
 import { ModeRail } from "@/components/ModeRail";
 import { ParamPanel } from "@/components/ParamPanel";
+import { StackEditor } from "@/components/StackEditor";
 import { UploadZone } from "@/components/UploadZone";
 import { VideoStage, type VideoMeta } from "@/components/VideoStage";
-import { DEFAULT_PARAMS, MODES, type Params, type ParamValue } from "@/lib/modes";
+import { MODES, makeStage, type ParamValue, type Stage } from "@/lib/modes";
 import type { ModeId } from "@/lib/effects/types";
 import { decodeToImageData, resizeImageData } from "@/lib/image";
-import { readRecipeFromLocation, recipeToUrl } from "@/lib/recipe";
-
-function freshParams(): Record<ModeId, Params> {
-  return Object.fromEntries(
-    Object.entries(DEFAULT_PARAMS).map(([k, v]) => [k, { ...v }]),
-  ) as Record<ModeId, Params>;
-}
+import { editorToUrl, readEditorFromLocation } from "@/lib/recipe";
 
 export default function Home() {
   const [source, setSource] = useState<ImageData | null>(null);
@@ -25,36 +20,41 @@ export default function Home() {
   const [videoName, setVideoName] = useState("");
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
   const [sample, setSample] = useState<ImageData | null>(null);
-  const [activeMode, setActiveMode] = useState<ModeId>("ascii");
-  const [params, setParams] = useState<Record<ModeId, Params>>(freshParams);
+
+  // The effect stack (>=1 layer) and which layer the panel/rail edits.
+  const [chain, setChain] = useState<Stage[]>(() => [
+    { id: "s0", mode: "ascii", params: { ...MODES.ascii.defaults } },
+  ]);
+  const [selected, setSelected] = useState(0);
   const [asciiText, setAsciiText] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
 
   const baseRef = useRef<HTMLCanvasElement>(null);
-  const overlayRef = useRef<HTMLCanvasElement>(null);
   const didMount = useRef(false);
   const videoObjectUrl = useRef<string | null>(null);
 
+  const current = chain[selected] ?? chain[0];
+  const activeMode: ModeId = current.mode;
   const mode = MODES[activeMode];
 
-  // Restore a shared recipe (mode + params) from the URL on first load.
+  // Restore a shared stack from the URL on first load.
   useEffect(() => {
-    const r = readRecipeFromLocation();
-    if (r) {
-      setActiveMode(r.mode);
-      setParams(r.params);
+    const state = readEditorFromLocation();
+    if (state) {
+      setChain(state.chain);
+      setSelected(state.selected);
     }
   }, []);
 
   // Keep the URL in sync with state (skip the first run so a shared link's query
-  // survives until the user actually changes something). replaceState = no history spam.
+  // survives until the user changes something). replaceState = no history spam.
   useEffect(() => {
     if (!didMount.current) {
       didMount.current = true;
       return;
     }
-    window.history.replaceState(null, "", recipeToUrl(activeMode, params));
-  }, [activeMode, params]);
+    window.history.replaceState(null, "", editorToUrl({ chain, selected }));
+  }, [chain, selected]);
 
   const clearVideo = () => {
     if (videoObjectUrl.current) URL.revokeObjectURL(videoObjectUrl.current);
@@ -72,7 +72,7 @@ export default function Home() {
       setSample(resizeImageData(data, 160));
       setStats(null);
     } catch {
-      // decode failed — keep whatever we had (upload zone stays if none).
+      // decode failed — keep whatever we had.
     }
   };
 
@@ -83,7 +83,7 @@ export default function Home() {
     setSource(null);
     setAsciiText(null);
     setStats(null);
-    setSample(null); // VideoStage supplies a first-frame sample once decoded
+    setSample(null);
     setVideoName(name);
     setVideoMeta(null);
     setVideoUrl(url);
@@ -94,13 +94,11 @@ export default function Home() {
     else if (f.type.startsWith("image/")) loadImage(f, f.name);
   };
 
-  // Auto-load the bundled sample so the tool demonstrates itself on first paint.
   useEffect(() => {
     loadImage("/sample.jpg", "sample.jpg");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Paste an image from the clipboard anywhere in the app.
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       const item = Array.from(e.clipboardData?.items ?? []).find((i) =>
@@ -114,17 +112,50 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Rail click sets the selected layer's effect (resetting its params).
+  const selectMode = (m: ModeId) =>
+    setChain((c) =>
+      c.map((s, i) => (i === selected ? { ...s, mode: m, params: { ...MODES[m].defaults } } : s)),
+    );
+
   const setParam = (key: string, value: ParamValue) =>
-    setParams((p) => ({ ...p, [activeMode]: { ...p[activeMode], [key]: value } }));
+    setChain((c) =>
+      c.map((s, i) => (i === selected ? { ...s, params: { ...s.params, [key]: value } } : s)),
+    );
 
   const resetParams = () =>
-    setParams((p) => ({ ...p, [activeMode]: { ...MODES[activeMode].defaults } }));
+    setChain((c) =>
+      c.map((s, i) => (i === selected ? { ...s, params: { ...MODES[s.mode].defaults } } : s)),
+    );
+
+  const addStage = () => {
+    setSelected(chain.length);
+    setChain((c) => [...c, makeStage("edges")]);
+  };
+
+  const removeStage = (i: number) => {
+    if (chain.length <= 1) return;
+    setChain((c) => c.filter((_, j) => j !== i));
+    setSelected((sel) => (i < sel ? sel - 1 : Math.min(sel, chain.length - 2)));
+  };
+
+  const moveStage = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= chain.length) return;
+    setChain((c) => {
+      const n = [...c];
+      [n[i], n[j]] = [n[j], n[i]];
+      return n;
+    });
+    setSelected((sel) => (sel === i ? j : sel === j ? i : sel));
+  };
 
   const dims = source
     ? `${source.width}×${source.height}`
     : videoMeta
       ? `${videoMeta.width}×${videoMeta.height}`
       : null;
+  const exportName = chain.length > 1 ? "stack" : activeMode;
 
   return (
     <div
@@ -138,12 +169,13 @@ export default function Home() {
         isVideo={!!videoUrl}
         duration={videoMeta?.duration ?? null}
         modeName={mode.name}
+        stackSize={chain.length}
         stats={source ? stats : null}
       />
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <aside className="shrink-0 border-b border-[var(--hairline)] p-3 md:w-28 md:border-b-0 md:border-r md:overflow-y-auto">
-          <ModeRail activeMode={activeMode} onSelect={setActiveMode} sample={sample} />
+          <ModeRail activeMode={activeMode} onSelect={selectMode} sample={sample} />
         </aside>
 
         <main className="relative min-h-0 flex-1">
@@ -152,18 +184,16 @@ export default function Home() {
             {videoUrl ? (
               <VideoStage
                 url={videoUrl}
-                mode={activeMode}
-                params={params[activeMode]}
+                stages={chain}
+                exportName={exportName}
                 onMeta={setVideoMeta}
                 onSample={setSample}
               />
             ) : source ? (
               <CanvasStage
                 source={source}
-                mode={activeMode}
-                params={params[activeMode]}
+                stages={chain}
                 baseRef={baseRef}
-                overlayRef={overlayRef}
                 onAsciiText={setAsciiText}
                 onStats={setStats}
               />
@@ -174,9 +204,17 @@ export default function Home() {
         </main>
 
         <aside className="shrink-0 border-t border-[var(--hairline)] bg-[var(--surface)] p-4 md:w-80 md:border-t-0 md:border-l md:overflow-y-auto">
+          <StackEditor
+            stages={chain}
+            selected={selected}
+            onSelect={setSelected}
+            onAdd={addStage}
+            onRemove={removeStage}
+            onMove={moveStage}
+          />
           <ParamPanel
             mode={mode}
-            params={params[activeMode]}
+            params={current.params}
             onChange={setParam}
             onReset={resetParams}
           />
@@ -185,11 +223,10 @@ export default function Home() {
 
       <footer className="border-t border-[var(--hairline)] bg-[var(--surface)] px-4 py-3">
         <ExportBar
-          mode={activeMode}
+          exportName={exportName}
           baseRef={baseRef}
-          overlayRef={overlayRef}
           asciiText={asciiText}
-          recipeUrl={recipeToUrl(activeMode, params)}
+          recipeUrl={editorToUrl({ chain, selected })}
           canExportImage={!!source}
           isVideo={!!videoUrl}
         />
@@ -205,6 +242,7 @@ function Header({
   isVideo,
   duration,
   modeName,
+  stackSize,
   stats,
 }: {
   onFile: (f: File) => void;
@@ -213,6 +251,7 @@ function Header({
   isVideo: boolean;
   duration: number | null;
   modeName: string;
+  stackSize: number;
   stats: Stats | null;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -251,13 +290,11 @@ function Header({
             {isVideo && <Readout label="" value="▶ video" />}
             <Readout label="src" value={dims} />
             <Readout label="mode" value={modeName} />
+            {stackSize > 1 && <Readout label="stack" value={`${stackSize}`} />}
             {isVideo && duration !== null && (
               <Readout label="clip" value={`${duration.toFixed(1)}s`} />
             )}
             {stats && <Readout label="t" value={`${Math.round(stats.ms)}ms`} />}
-            {stats?.detections !== undefined && (
-              <Readout label="det" value={`${stats.detections}`} />
-            )}
             <span className="hidden max-w-[140px] truncate text-[var(--text-muted)]/70 lg:inline">
               {name}
             </span>

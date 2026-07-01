@@ -1,35 +1,40 @@
-// Shareable "recipes": the current mode + all params encoded into the URL query,
-// so a link reproduces the exact result. No server, no DB — the string is the state.
+// Shareable "recipes": the whole effect stack (each layer's mode + params) plus
+// the selected layer, encoded into the URL query. No server, no DB — the string
+// is the state.
 
-import { DEFAULT_PARAMS, MODES, MODE_ORDER, type Params } from "./modes";
+import { MODES, MODE_ORDER, makeStage, type Params, type Stage } from "./modes";
 import type { ModeId } from "./effects/types";
 
 const KEY = "r";
 
-export type Recipe = { mode: ModeId; params: Record<ModeId, Params> };
+export type EditorState = { chain: Stage[]; selected: number };
 
-export function encodeRecipe(mode: ModeId, params: Record<ModeId, Params>): string {
-  // ponytail: base64url of JSON — recipes are a few hundred bytes. Swap for a
-  // CompressionStream pass only if they ever get large enough to matter in a URL.
-  return b64urlEncode(JSON.stringify({ m: mode, p: params }));
+export function encodeEditor(state: EditorState): string {
+  // ponytail: base64url of JSON — a stack is a few hundred bytes. Swap for a
+  // CompressionStream pass only if stacks ever get large enough to matter.
+  const payload = {
+    se: state.selected,
+    c: state.chain.map((s) => ({ m: s.mode, p: s.params })),
+  };
+  return b64urlEncode(JSON.stringify(payload));
 }
 
 /** Build a full URL for the current state (empty string during SSR). */
-export function recipeToUrl(mode: ModeId, params: Record<ModeId, Params>): string {
+export function editorToUrl(state: EditorState): string {
   if (typeof window === "undefined") return "";
   const u = new URL(window.location.href);
-  u.searchParams.set(KEY, encodeRecipe(mode, params));
+  u.searchParams.set(KEY, encodeEditor(state));
   return u.toString();
 }
 
 /** Read + validate a recipe from the current URL, or null if absent/invalid. */
-export function readRecipeFromLocation(): Recipe | null {
+export function readEditorFromLocation(): EditorState | null {
   if (typeof window === "undefined") return null;
   const raw = new URLSearchParams(window.location.search).get(KEY);
-  return raw ? decodeRecipe(raw) : null;
+  return raw ? decodeEditor(raw) : null;
 }
 
-export function decodeRecipe(raw: string): Recipe | null {
+export function decodeEditor(raw: string): EditorState | null {
   let obj: unknown;
   try {
     obj = JSON.parse(b64urlDecode(raw));
@@ -37,36 +42,51 @@ export function decodeRecipe(raw: string): Recipe | null {
     return null;
   }
   if (!obj || typeof obj !== "object") return null;
-  const mode = (obj as { m?: unknown }).m;
-  const p = (obj as { p?: unknown }).p as Record<string, unknown> | undefined;
-  if (typeof mode !== "string" || !MODE_ORDER.includes(mode as ModeId)) return null;
+  const c = (obj as { c?: unknown }).c;
+  if (!Array.isArray(c)) return null;
 
-  // Rebuild a full params map from defaults, overlaying only validated values.
-  const params = {} as Record<ModeId, Params>;
-  for (const id of MODE_ORDER) params[id] = sanitizeParams(id, p?.[id]);
-  return { mode: mode as ModeId, params };
+  const chain: Stage[] = [];
+  for (const item of c) {
+    const m = (item as { m?: unknown })?.m;
+    if (typeof m !== "string" || !MODE_ORDER.includes(m as ModeId)) continue;
+    chain.push({
+      id: crypto.randomUUID(),
+      mode: m as ModeId,
+      params: sanitizeParams(m as ModeId, (item as { p?: unknown })?.p),
+    });
+  }
+  if (chain.length === 0) return null;
+
+  const seRaw = Number((obj as { se?: unknown }).se);
+  const selected = Number.isInteger(seRaw) ? Math.min(chain.length - 1, Math.max(0, seRaw)) : 0;
+  return { chain, selected };
 }
 
 /** Untrusted input from a URL — clamp/coerce every value to its control's shape. */
 function sanitizeParams(id: ModeId, raw: unknown): Params {
-  const out: Params = { ...DEFAULT_PARAMS[id] };
+  const out: Params = { ...MODES[id].defaults };
   if (!raw || typeof raw !== "object") return out;
   const src = raw as Record<string, unknown>;
-  for (const c of MODES[id].controls) {
-    const v = src[c.key];
+  for (const cont of MODES[id].controls) {
+    const v = src[cont.key];
     if (v === undefined) continue;
-    if (c.kind === "toggle") {
-      out[c.key] = Boolean(v);
-    } else if (c.kind === "select") {
-      if (typeof v === "string" && c.options.some((o) => o.value === v)) out[c.key] = v;
+    if (cont.kind === "toggle") {
+      out[cont.key] = Boolean(v);
+    } else if (cont.kind === "select") {
+      if (typeof v === "string" && cont.options.some((o) => o.value === v)) out[cont.key] = v;
     } else {
       const n = Number(v);
       if (!Number.isFinite(n)) continue;
-      out[c.key] =
-        c.kind === "slider" ? Math.min(c.max, Math.max(c.min, n)) : Math.max(0, Math.floor(n));
+      out[cont.key] =
+        cont.kind === "slider" ? Math.min(cont.max, Math.max(cont.min, n)) : Math.max(0, Math.floor(n));
     }
   }
   return out;
+}
+
+/** Fallback default stack: a single ASCII layer. */
+export function defaultEditor(): EditorState {
+  return { chain: [makeStage("ascii")], selected: 0 };
 }
 
 function b64urlEncode(s: string): string {

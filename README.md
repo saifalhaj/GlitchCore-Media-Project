@@ -21,6 +21,18 @@ mode, so the switcher doubles as a gallery of what the tool does.
 Each effect is a pure function in [`lib/effects/`](lib/effects) — independently
 testable and swappable.
 
+## Stacking & sharing
+
+Every effect is a **layer**. Build a chain in the right panel — `Edge Map →
+ASCII`, `Depth → Halftone`, `Glitchcore → Halftone`, whatever — piped
+source → … → output. The mode rail sets the *selected* layer, **＋ add** appends
+one, and you can reorder or remove layers. YOLO bakes its boxes into the frame,
+so it composes like any other layer.
+
+The **entire stack** (every layer's mode + params) is encoded into the URL, so
+**Copy link** produces a link that reproduces the exact result — no server, no
+database. Input is validated on load, so a hand-edited link can't break the app.
+
 ## Video
 
 Load a video (**Open…** in the header, or drag-drop) and the four pixel effects

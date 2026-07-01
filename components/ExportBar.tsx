@@ -1,21 +1,18 @@
 "use client";
 
 import { useState, type RefObject } from "react";
-import type { ModeId } from "@/lib/effects/types";
-import { composite, downloadCanvas } from "@/lib/image";
+import { downloadCanvas } from "@/lib/image";
 
 export function ExportBar({
-  mode,
+  exportName,
   baseRef,
-  overlayRef,
   asciiText,
   recipeUrl,
   canExportImage,
   isVideo,
 }: {
-  mode: ModeId;
+  exportName: string;
   baseRef: RefObject<HTMLCanvasElement | null>;
-  overlayRef: RefObject<HTMLCanvasElement | null>;
   asciiText: string | null;
   recipeUrl: string;
   canExportImage: boolean;
@@ -26,9 +23,7 @@ export function ExportBar({
 
   const downloadPng = () => {
     const base = baseRef.current;
-    if (!base) return;
-    const flat = composite(base, mode === "yolo" ? overlayRef.current : null);
-    downloadCanvas(flat, `glitchcore-${mode}.png`);
+    if (base) downloadCanvas(base, `glitchcore-${exportName}.png`);
   };
 
   const copyText = async () => {
@@ -38,7 +33,7 @@ export function ExportBar({
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
     } catch {
-      // clipboard blocked (e.g. insecure context) — no-op, button stays available
+      // clipboard blocked (e.g. insecure context) — no-op
     }
   };
 
@@ -64,7 +59,7 @@ export function ExportBar({
           type="button"
           onClick={copyLink}
           className="rounded-[var(--radius-sm)] border border-[var(--hairline)] px-3.5 py-2 text-sm text-[var(--text)] transition-colors hover:border-[var(--accent)]"
-          title="Copy a link that reproduces this mode and its settings"
+          title="Copy a link that reproduces this whole stack"
         >
           {linkCopied ? "Link copied" : "Copy link"}
         </button>
@@ -74,11 +69,11 @@ export function ExportBar({
           </span>
         ) : (
           <>
-            {mode === "ascii" && (
+            {asciiText !== null && (
               <button
                 type="button"
                 onClick={copyText}
-                disabled={!canExportImage || !asciiText}
+                disabled={!canExportImage}
                 className="rounded-[var(--radius-sm)] border border-[var(--hairline)] px-3.5 py-2 text-sm text-[var(--text)] transition-colors hover:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {copied ? "Copied" : "Copy as text"}

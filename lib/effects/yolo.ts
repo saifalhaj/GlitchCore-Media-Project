@@ -1,4 +1,5 @@
 import type { Detection, YoloParams } from "./types";
+import { drawDetectionsCtx } from "../image";
 
 export const MODEL_PATH = "/models/yolo11n.onnx";
 
@@ -204,4 +205,20 @@ export async function detect(source: ImageData, params: YoloParams): Promise<Det
   }
 
   return nms(dets, params.iouThreshold);
+}
+
+/** Detect + bake boxes into a copy of the source, returning a full-frame
+ *  ImageData. Used so YOLO can be a stackable stage (no separate overlay). */
+export async function detectAndBake(source: ImageData, params: YoloParams): Promise<ImageData> {
+  const dets = await detect(source, params);
+  const canvas = document.createElement("canvas");
+  canvas.width = source.width;
+  canvas.height = source.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  ctx.putImageData(source, 0, 0);
+  drawDetectionsCtx(ctx, source.width, dets, {
+    lineWidth: Number(params.boxLineWidth),
+    showLabels: Boolean(params.showLabels),
+  });
+  return ctx.getImageData(0, 0, source.width, source.height);
 }

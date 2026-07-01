@@ -206,6 +206,34 @@ export function runPixelEffect(
   }
 }
 
+export type PixelMode = "ascii" | "glitch" | "halftone" | "edges";
+export const PIXEL_MODES: PixelMode[] = ["ascii", "glitch", "halftone", "edges"];
+export function isPixelMode(m: ModeId): m is PixelMode {
+  return (PIXEL_MODES as string[]).includes(m);
+}
+
+/** One layer of the effect stack. */
+export type Stage = { id: string; mode: ModeId; params: Params };
+
+export function makeStage(mode: ModeId): Stage {
+  return { id: crypto.randomUUID(), mode, params: { ...MODES[mode].defaults } };
+}
+
+/** Run only the synchronous pixel stages of a chain — used for live video, where
+ *  per-frame model inference (YOLO/Depth) would be far too slow. Model stages
+ *  pass through unchanged. */
+export function runPixelChain(source: ImageData, stages: Stage[]): EffectResult {
+  let acc = source;
+  let text: string | undefined;
+  for (const s of stages) {
+    if (!isPixelMode(s.mode)) continue;
+    const r = runPixelEffect(s.mode, acc, s.params);
+    acc = r.imageData;
+    if (s.mode === "ascii") text = r.text;
+  }
+  return { imageData: acc, text };
+}
+
 export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   ascii: { ...MODES.ascii.defaults },
   glitch: { ...MODES.glitch.defaults },

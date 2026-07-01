@@ -77,20 +77,14 @@ export function composite(
   return out;
 }
 
-/** Draw YOLO boxes + labels onto an overlay canvas sized to the source image.
- *  Coordinates are in source pixels; the canvas is CSS-scaled to match the base. */
-export function drawDetections(
-  canvas: HTMLCanvasElement,
+/** Draw YOLO boxes + labels onto an existing 2D context (already holding the
+ *  frame). `imgW` scales the label font. */
+export function drawDetectionsCtx(
+  ctx: CanvasRenderingContext2D,
   imgW: number,
-  imgH: number,
   dets: Detection[],
   opts: { lineWidth: number; showLabels: boolean; color?: string },
 ): void {
-  if (canvas.width !== imgW) canvas.width = imgW;
-  if (canvas.height !== imgH) canvas.height = imgH;
-  const ctx = canvas.getContext("2d")!;
-  ctx.clearRect(0, 0, imgW, imgH);
-
   const color = opts.color ?? "#ff6b00";
   ctx.lineWidth = opts.lineWidth;
   ctx.strokeStyle = color;
@@ -111,12 +105,6 @@ export function drawDetections(
     ctx.fillStyle = "#0b0c0e";
     ctx.fillText(text, d.x + pad, ly + pad);
   }
-}
-
-/** Clear an overlay canvas. */
-export function clearCanvas(canvas: HTMLCanvasElement): void {
-  const ctx = canvas.getContext("2d");
-  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 /** Trigger a browser download of a Blob. */
