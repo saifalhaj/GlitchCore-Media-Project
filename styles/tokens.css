@@ -1,0 +1,28 @@
+/* SceneFX design tokens — see build spec §5.
+   Color is a legend here: each mode owns a hue, reused for its rail thumbnail
+   border, active-tab underline, and param-panel accents. */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #0b0c0e;          /* near-black charcoal, not pure #000 */
+  --surface: #16181c;     /* panels */
+  --surface-2: #1e2127;   /* raised: inputs, thumbnails */
+  --hairline: #2a2e35;    /* borders / dividers */
+  --text: #edebe3;        /* warm off-white */
+  --text-muted: #8a8f98;  /* secondary labels */
+
+  /* Mode hues */
+  --mode-ascii: #39ff88;      /* phosphor green — terminal callback */
+  --mode-glitch: #ff2a6d;     /* magenta — RGB-split reference */
+  --mode-glitch-2: #05d9e8;   /* cyan pair */
+  --mode-yolo: #ff6b00;       /* safety orange — bounding-box convention */
+  --mode-halftone: #3e6fd9;   /* ink blue — print reference */
+  --mode-edge: #c9ccd1;       /* silver/graphite — line-art reference */
+
+  /* Active accent — reassigned to the active mode's hue at runtime. */
+  --accent: var(--mode-ascii);
+
+  --radius: 10px;
+  --radius-sm: 6px;
+}
