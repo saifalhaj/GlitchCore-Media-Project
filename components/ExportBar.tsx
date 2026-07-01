@@ -26,7 +26,7 @@ export function ExportBar({
     const base = baseRef.current;
     if (!base) return;
     const flat = composite(base, mode === "yolo" ? overlayRef.current : null);
-    downloadCanvas(flat, `scenefx-${mode}.png`);
+    downloadCanvas(flat, `glitchcore-${mode}.png`);
   };
 
   const copyText = async () => {

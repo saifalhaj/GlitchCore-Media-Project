@@ -159,10 +159,10 @@ function Header({
     <header className="flex items-center justify-between gap-4 border-b border-[var(--hairline)] bg-[var(--surface)] px-4 py-2.5">
       <div className="flex items-baseline gap-3">
         <span className="font-mono text-lg font-bold tracking-tight">
-          Scene<span style={{ color: "var(--accent)" }}>FX</span>
+          Glitch<span style={{ color: "var(--accent)" }}>Core</span>
         </span>
         <span className="hidden font-mono text-[11px] text-[var(--text-muted)] sm:inline">
-          client-side image effects
+          image effects
         </span>
       </div>
 

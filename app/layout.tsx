@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SceneFX — client-side image effects",
+  title: "GlitchCore — image effects",
   description:
     "Upload one image, run it through five algorithmic modes — ASCII, glitch, YOLO detection, halftone, and edge maps — all in the browser. No upload, no accounts.",
 };

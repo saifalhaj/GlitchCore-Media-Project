@@ -1,4 +1,4 @@
-# SceneFX
+# GlitchCore — image effects
 
 A single-page image tool. Upload one image, run it through five algorithmic
 modes, tune each live, export the result. **Everything runs client-side** —

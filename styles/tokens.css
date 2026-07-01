@@ -1,4 +1,4 @@
-/* SceneFX design tokens — see build spec §5.
+/* GlitchCore design tokens — see build spec §5.
    Color is a legend here: each mode owns a hue, reused for its rail thumbnail
    border, active-tab underline, and param-panel accents. */
 :root {
