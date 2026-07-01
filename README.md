@@ -16,6 +16,7 @@ mode, so the switcher doubles as a gallery of what the tool does.
 | **YOLO** | Real object detection with **YOLO11n** running in your browser via `onnxruntime-web` (WebGPU with automatic WASM fallback). Boxes + labels on a separate overlay layer. |
 | **Halftone** | Ordered dithering (Bayer 4×4 / 8×8), Floyd–Steinberg error diffusion, and true dot halftone. Mono or duotone. |
 | **Edge Map** | Sobel gradient magnitude → line art, with threshold, invert, and blend-with-original. |
+| **Depth** | Monocular depth estimation (**Depth-Anything V2 small**, ONNX) in the browser — near is bright. Turbo or grayscale colormap, invertible. |
 
 Each effect is a pure function in [`lib/effects/`](lib/effects) — independently
 testable and swappable.
@@ -45,12 +46,17 @@ npm run dev      # http://localhost:3000
 npm run build    # production build
 ```
 
-## The YOLO model
+## The ONNX models
 
-The detector loads `public/models/yolo11n.onnx` (~10 MB, YOLO11n, 640 input).
-It's committed to the repo and served as a static asset. If it's missing, the
-YOLO mode shows the source image unaltered with a note — every other mode is
-unaffected.
+Two models are committed and served as static assets:
+
+- `public/models/yolo11n.onnx` (~10 MB, YOLO11n, 640 input) — detection
+- `public/models/depth-anything-v2-small.onnx` (~27 MB, int8 quantized, 518 input) — depth
+
+Both load lazily on first use of their mode, try WebGPU first and fall back to
+WASM, and share the cached session. If a model file is missing, that mode shows
+the source image unaltered with a drop-in note — every other mode is unaffected.
+Depth is compute-heavy; expect a few seconds on WASM (much faster on WebGPU).
 
 > ⚠️ **Licensing:** Ultralytics YOLO models are AGPL-3.0 (or require an
 > Ultralytics Enterprise license for closed-source commercial use). Fine for a

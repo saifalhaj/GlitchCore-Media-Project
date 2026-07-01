@@ -2,7 +2,7 @@
 // functions `(source, params) => EffectResult`. YOLO is separate (async, returns
 // boxes rather than transformed pixels) — see ./yolo.ts.
 
-export type ModeId = "ascii" | "glitch" | "yolo" | "halftone" | "edges";
+export type ModeId = "ascii" | "glitch" | "yolo" | "halftone" | "edges" | "depth";
 
 /** Output of a pixel effect. `text` is only set by ASCII (the raw character grid,
  *  retained for "Copy as text" — the canvas is a rasterization of it). */
@@ -48,6 +48,11 @@ export type EdgeParams = {
   threshold: number; // 0–255, below this = no edge
   invert: boolean;
   blendWithOriginal: number; // 0–1, 0 = pure edge map
+};
+
+export type DepthParams = {
+  colormap: "grayscale" | "turbo";
+  invert: boolean; // swap near/far brightness
 };
 
 /** A single YOLO detection in source-image pixel coordinates (top-left origin). */

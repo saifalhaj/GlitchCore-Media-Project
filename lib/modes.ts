@@ -50,6 +50,7 @@ export const MODE_ORDER: ModeId[] = [
   "yolo",
   "halftone",
   "edges",
+  "depth",
 ];
 
 export const MODES: Record<ModeId, ModeDef> = {
@@ -164,12 +165,32 @@ export const MODES: Record<ModeId, ModeDef> = {
     ],
     defaults: { threshold: 80, invert: false, blendWithOriginal: 0 },
   },
+
+  depth: {
+    id: "depth",
+    name: "Depth",
+    tagline: "Monocular depth (Depth-Anything V2) — near is bright, in your browser.",
+    color: "var(--mode-depth)",
+    controls: [
+      {
+        kind: "select",
+        key: "colormap",
+        label: "Colormap",
+        options: [
+          { value: "turbo", label: "Turbo" },
+          { value: "grayscale", label: "Grayscale" },
+        ],
+      },
+      { kind: "toggle", key: "invert", label: "Invert" },
+    ],
+    defaults: { colormap: "turbo", invert: false },
+  },
 };
 
-/** Dispatch a pixel effect. YOLO is not here — it's detection, handled by the
- *  stage's overlay layer (see components/CanvasStage.tsx). */
+/** Dispatch a synchronous pixel effect. YOLO (detection) and Depth (async model
+ *  inference) are handled specially in components/CanvasStage.tsx. */
 export function runPixelEffect(
-  mode: Exclude<ModeId, "yolo">,
+  mode: Exclude<ModeId, "yolo" | "depth">,
   source: ImageData,
   params: Params,
 ): EffectResult {
@@ -191,4 +212,5 @@ export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   yolo: { ...MODES.yolo.defaults },
   halftone: { ...MODES.halftone.defaults },
   edges: { ...MODES.edges.defaults },
+  depth: { ...MODES.depth.defaults },
 };

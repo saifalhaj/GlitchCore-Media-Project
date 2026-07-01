@@ -62,11 +62,12 @@ export function VideoStage({
     if (!octx) return;
     octx.drawImage(v, 0, 0, off.width, off.height);
     const src = octx.getImageData(0, 0, off.width, off.height);
-    if (modeRef.current === "yolo") {
-      // Per-frame detection is too slow for video — show the frame unaltered.
+    const m = modeRef.current;
+    if (m === "yolo" || m === "depth") {
+      // Per-frame model inference is too slow for video — show the frame unaltered.
       drawImageData(c, src);
     } else {
-      const { imageData } = runPixelEffect(modeRef.current, src, paramsRef.current);
+      const { imageData } = runPixelEffect(m, src, paramsRef.current);
       drawImageData(c, imageData);
     }
   }, []);
@@ -192,9 +193,12 @@ export function VideoStage({
           onEnded={() => setPlaying(false)}
           className="hidden"
         />
-        {mode === "yolo" && (
-          <span className="pointer-events-none absolute left-6 top-6 rounded-full border border-[var(--mode-yolo)]/50 bg-[var(--surface)]/90 px-2.5 py-1 font-mono text-[10px] text-[var(--text-muted)]">
-            detection runs on stills — video shows the source frame
+        {(mode === "yolo" || mode === "depth") && (
+          <span
+            className="pointer-events-none absolute left-6 top-6 rounded-full border bg-[var(--surface)]/90 px-2.5 py-1 font-mono text-[10px] text-[var(--text-muted)]"
+            style={{ borderColor: "color-mix(in srgb, var(--accent) 50%, transparent)" }}
+          >
+            {mode === "depth" ? "depth" : "detection"} runs on stills — video shows the source frame
           </span>
         )}
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { DEFAULT_PARAMS, MODE_ORDER, MODES, runPixelEffect } from "@/lib/modes";
 import type { ModeId } from "@/lib/effects/types";
 import { drawImageData } from "@/lib/image";
+import { turbo } from "@/lib/colormap";
 
 /**
  * Signature element — the mode switcher is five live thumbnails, each showing a
@@ -30,6 +31,8 @@ export function ModeRail({
       try {
         if (id === "yolo") {
           drawYoloPreview(canvas, sample);
+        } else if (id === "depth") {
+          drawDepthPreview(canvas, sample);
         } else {
           const { imageData } = runPixelEffect(id, sample, DEFAULT_PARAMS[id]);
           drawImageData(canvas, imageData);
@@ -96,6 +99,24 @@ export function ModeRail({
       })}
     </div>
   );
+}
+
+/** Model-free depth thumbnail — luminance through the turbo colormap. Suggests
+ *  the mode's look without eagerly downloading the depth model. */
+function drawDepthPreview(canvas: HTMLCanvasElement, sample: ImageData) {
+  const { width: w, height: h, data: src } = sample;
+  const out = new ImageData(w, h);
+  const d = out.data;
+  for (let i = 0; i < w * h; i++) {
+    const p = i * 4;
+    const l = (0.299 * src[p] + 0.587 * src[p + 1] + 0.114 * src[p + 2]) / 255;
+    const [r, g, b] = turbo(l);
+    d[p] = r;
+    d[p + 1] = g;
+    d[p + 2] = b;
+    d[p + 3] = 255;
+  }
+  drawImageData(canvas, out);
 }
 
 /** Static, model-free preview for the YOLO thumbnail (real detection runs in the
