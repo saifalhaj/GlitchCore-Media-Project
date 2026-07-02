@@ -30,11 +30,11 @@ export function ParamPanel({
   onReset: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <div className="flex items-baseline justify-between gap-3 px-1">
-        <h2 className="font-mono text-sm font-bold tracking-wide text-[var(--text)]">
-          {mode.name}
-        </h2>
+        <span className="font-mono text-[11px] tracking-wide text-[var(--text-muted)]">
+          {mode.name} dials
+        </span>
         <button
           type="button"
           onClick={onReset}
@@ -43,12 +43,9 @@ export function ParamPanel({
           reset
         </button>
       </div>
-      <p className="mt-1 px-1 text-xs leading-relaxed text-[var(--text-muted)]">
-        {mode.tagline}
-      </p>
 
       {/* Layer-level compositing: opacity + blend mode against the layer's input. */}
-      <div className="mt-5 border-b border-[var(--hairline)] pb-5">
+      <div className="mt-4 border-b border-[var(--hairline)] pb-5">
         <label className="block">
           <div className="mb-1.5 flex items-center justify-between">
             <span className="text-xs text-[var(--text-muted)]">Blend with original</span>

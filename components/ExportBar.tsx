@@ -83,8 +83,7 @@ export function ExportBar({
               type="button"
               onClick={downloadPng}
               disabled={!canExportImage}
-              className="rounded-[var(--radius-sm)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ background: "var(--accent)" }}
+              className="btn-accent rounded-[var(--radius-sm)] px-3.5 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
             >
               Download PNG
             </button>

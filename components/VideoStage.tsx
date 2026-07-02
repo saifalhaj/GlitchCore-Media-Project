@@ -221,8 +221,7 @@ export function VideoStage({
           type="button"
           onClick={record}
           disabled={!ready || recording || !recordable}
-          className="shrink-0 rounded-[var(--radius-sm)] px-3.5 py-2 text-sm font-medium text-[var(--bg)] transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ background: "var(--accent)" }}
+          className="btn-accent shrink-0 rounded-[var(--radius-sm)] px-3.5 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
           title={recordable ? `Record up to ${MAX_SECONDS}s to WebM` : "Recording isn't supported in this browser"}
         >
           {recording ? `Recording ${Math.round(progress * 100)}%` : "Export clip"}

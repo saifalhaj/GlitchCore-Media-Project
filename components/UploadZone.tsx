@@ -64,8 +64,7 @@ export function UploadZone({
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="rounded-[var(--radius-sm)] px-4 py-2 text-sm font-medium text-[var(--bg)] transition-transform active:scale-[0.97]"
-          style={{ background: "var(--accent)" }}
+          className="btn-accent rounded-[var(--radius-sm)] px-4 py-2 text-sm font-medium"
         >
           Browse files
         </button>

@@ -1,11 +1,19 @@
 # GlitchCore — image effects
 
-A single-page image tool. Upload one image, run it through five algorithmic
-modes, tune each live, export the result. **Everything runs client-side** —
-nothing is uploaded, there is no server, no database, no accounts.
+Upload an image or a short video, run it through six algorithmic modes, tune
+each live, export the result. **Everything runs client-side** — nothing is
+uploaded, there is no server, no database, no accounts.
 
-Live thumbnails in the mode rail show a fixed sample already run through each
-mode, so the switcher doubles as a gallery of what the tool does.
+Two routes:
+
+- **/** — a motion-driven landing page where the effect engine demos itself:
+  a six-mode hero cycle, a still + live-per-frame-video proof section, and a
+  live-rendered mode gallery (all produced on page load from `/sample.jpg`
+  and `/sample.mp4`).
+- **/studio** — the tool. **One-click presets per mode** are the default UI;
+  the dials, per-layer blend controls, and the effect stack live under
+  **Advanced**. Live thumbnails in the mode rail show the current media
+  already run through each mode, so the switcher doubles as a gallery.
 
 ## The five modes
 

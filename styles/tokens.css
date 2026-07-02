@@ -1,16 +1,20 @@
-/* GlitchCore design tokens — see build spec §5.
-   Color is a legend here: each mode owns a hue, reused for its rail thumbnail
-   border, active-tab underline, and param-panel accents. */
+/* GlitchCore design tokens.
+   Color is a legend: each mode owns a hue, reused for its rail thumbnail,
+   preset chips, accents, and the stage glow. Surfaces are glass over an
+   ambient "aurora" of mode hues — the modern-tool look. */
 :root {
   color-scheme: dark;
 
   /* Surfaces */
-  --bg: #0b0c0e;          /* near-black charcoal, not pure #000 */
-  --surface: #16181c;     /* panels */
-  --surface-2: #1e2127;   /* raised: inputs, thumbnails */
-  --hairline: #2a2e35;    /* borders / dividers */
-  --text: #edebe3;        /* warm off-white */
-  --text-muted: #8a8f98;  /* secondary labels */
+  --bg: #060709;            /* near-black, deeper than before */
+  --surface: #131519;       /* solid panel fallback */
+  --surface-2: #1c1f25;     /* raised: inputs, thumbnails */
+  --glass: rgba(255, 255, 255, 0.04);       /* translucent panel fill */
+  --glass-strong: rgba(19, 21, 25, 0.72);   /* readable glass (over media) */
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --hairline: #262a31;
+  --text: #edebe3;          /* warm off-white */
+  --text-muted: #8a8f98;
 
   /* Mode hues */
   --mode-ascii: #39ff88;      /* phosphor green — terminal callback */
@@ -24,6 +28,9 @@
   /* Active accent — reassigned to the active mode's hue at runtime. */
   --accent: var(--mode-ascii);
 
-  --radius: 10px;
-  --radius-sm: 6px;
+  --radius: 16px;
+  --radius-sm: 10px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
