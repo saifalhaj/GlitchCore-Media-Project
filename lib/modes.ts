@@ -2,6 +2,7 @@ import { ascii } from "./effects/ascii";
 import { glitch } from "./effects/glitch";
 import { halftone } from "./effects/halftone";
 import { edges } from "./effects/edges";
+import { blendImageData } from "./image";
 import type {
   EffectResult,
   ModeId,
@@ -161,9 +162,8 @@ export const MODES: Record<ModeId, ModeDef> = {
     controls: [
       { kind: "slider", key: "threshold", label: "Threshold", min: 0, max: 255, step: 1 },
       { kind: "toggle", key: "invert", label: "Invert" },
-      { kind: "slider", key: "blendWithOriginal", label: "Blend", min: 0, max: 1, step: 0.01 },
     ],
-    defaults: { threshold: 80, invert: false, blendWithOriginal: 0 },
+    defaults: { threshold: 80, invert: false },
   },
 
   depth: {
@@ -212,11 +212,13 @@ export function isPixelMode(m: ModeId): m is PixelMode {
   return (PIXEL_MODES as string[]).includes(m);
 }
 
-/** One layer of the effect stack. */
-export type Stage = { id: string; mode: ModeId; params: Params };
+/** One layer of the effect stack. `opacity` is layer-level (not an effect
+ *  param): 1 = the effect replaces the frame, <1 = it composites over the
+ *  layer's input, letting the original show through. */
+export type Stage = { id: string; mode: ModeId; params: Params; opacity: number };
 
 export function makeStage(mode: ModeId): Stage {
-  return { id: crypto.randomUUID(), mode, params: { ...MODES[mode].defaults } };
+  return { id: crypto.randomUUID(), mode, params: { ...MODES[mode].defaults }, opacity: 1 };
 }
 
 /** Run only the synchronous pixel stages of a chain — used for live video, where
@@ -228,7 +230,7 @@ export function runPixelChain(source: ImageData, stages: Stage[]): EffectResult 
   for (const s of stages) {
     if (!isPixelMode(s.mode)) continue;
     const r = runPixelEffect(s.mode, acc, s.params);
-    acc = r.imageData;
+    acc = blendImageData(r.imageData, acc, s.opacity ?? 1);
     if (s.mode === "ascii") text = r.text;
   }
   return { imageData: acc, text };

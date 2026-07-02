@@ -5,7 +5,7 @@ export function edges(source: ImageData, params: EdgeParams): EffectResult {
   const { width: w, height: h, data: src } = source;
   const out = blankLike(source);
   const dst = out.data;
-  const { threshold, invert, blendWithOriginal: b } = params;
+  const { threshold, invert } = params;
 
   // Precompute grayscale (luminance) buffer.
   const gray = new Float32Array(w * h);
@@ -37,10 +37,9 @@ export function edges(source: ImageData, params: EdgeParams): EffectResult {
       const edgeV = invert ? 255 - e : e;
 
       const p = (y * w + x) * 4;
-      // Lerp edge map toward original per channel (b=1 => original).
-      dst[p] = Math.round(edgeV + (src[p] - edgeV) * b);
-      dst[p + 1] = Math.round(edgeV + (src[p + 1] - edgeV) * b);
-      dst[p + 2] = Math.round(edgeV + (src[p + 2] - edgeV) * b);
+      dst[p] = edgeV;
+      dst[p + 1] = edgeV;
+      dst[p + 2] = edgeV;
       dst[p + 3] = 255;
     }
   }

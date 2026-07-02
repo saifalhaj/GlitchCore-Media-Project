@@ -47,7 +47,7 @@ export type HalftoneParams = {
 export type EdgeParams = {
   threshold: number; // 0–255, below this = no edge
   invert: boolean;
-  blendWithOriginal: number; // 0–1, 0 = pure edge map
+  // (blending with the original is layer-level now — see Stage.opacity)
 };
 
 export type DepthParams = {

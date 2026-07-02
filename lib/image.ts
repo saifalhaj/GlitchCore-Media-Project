@@ -107,6 +107,27 @@ export function drawDetectionsCtx(
   }
 }
 
+/** Composite an effect frame at `opacity` over its source (scaled to the
+ *  effect's dimensions — ASCII/halftone change size). opacity 1 = pure effect,
+ *  0 = pure original; the layer-opacity model every design tool uses. */
+export function blendImageData(
+  effect: ImageData,
+  source: ImageData,
+  opacity: number,
+): ImageData {
+  if (opacity >= 1) return effect;
+  const out = newCanvas(effect.width, effect.height);
+  const ctx = out.getContext("2d", { willReadFrequently: true })!;
+  const src = newCanvas(source.width, source.height);
+  src.getContext("2d")!.putImageData(source, 0, 0);
+  ctx.drawImage(src, 0, 0, effect.width, effect.height);
+  const eff = newCanvas(effect.width, effect.height);
+  eff.getContext("2d")!.putImageData(effect, 0, 0);
+  ctx.globalAlpha = Math.max(0, opacity);
+  ctx.drawImage(eff, 0, 0);
+  return ctx.getImageData(0, 0, effect.width, effect.height);
+}
+
 /** Trigger a browser download of a Blob. */
 export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);

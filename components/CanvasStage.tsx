@@ -84,13 +84,13 @@ export function CanvasStage({
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, JSON.stringify(stages.map((s) => ({ m: s.mode, p: s.params })))]);
+  }, [source, JSON.stringify(stages.map((s) => ({ m: s.mode, p: s.params, o: s.opacity })))]);
 
   return (
     <div className="relative grid h-full w-full place-items-center overflow-hidden p-4 sm:p-6">
       <canvas
         ref={baseRef}
-        className="checker max-h-full max-w-full rounded-[var(--radius-sm)]"
+        className="checker stage-glow max-h-full max-w-full rounded-[var(--radius-sm)]"
         style={{ imageRendering: lastMode === "ascii" || lastMode === "halftone" ? "pixelated" : "auto" }}
       />
 
@@ -109,7 +109,9 @@ export function CanvasStage({
 
       {(status === "processing" || status === "loading-model") && (
         <span className="absolute right-3 top-3 rounded-full border border-[var(--hairline)] bg-[var(--surface)]/90 px-2 py-0.5 font-mono text-[10px] text-[var(--text-muted)]">
-          {status === "loading-model" ? "loading model…" : "processing…"}
+          {status === "loading-model"
+            ? "running model… first use downloads it"
+            : "processing…"}
         </span>
       )}
 

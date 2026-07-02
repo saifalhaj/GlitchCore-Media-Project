@@ -10,11 +10,15 @@ function fmt(v: number, step: number, unit?: string) {
 export function ParamPanel({
   mode,
   params,
+  opacity,
+  onOpacity,
   onChange,
   onReset,
 }: {
   mode: ModeDef;
   params: Params;
+  opacity: number;
+  onOpacity: (v: number) => void;
   onChange: (key: string, value: ParamValue) => void;
   onReset: () => void;
 }) {
@@ -35,6 +39,29 @@ export function ParamPanel({
       <p className="mt-1 px-1 text-xs leading-relaxed text-[var(--text-muted)]">
         {mode.tagline}
       </p>
+
+      {/* Layer-level blend: 100% = effect replaces the frame, lower = the
+          original shows through underneath. */}
+      <label className="mt-5 block border-b border-[var(--hairline)] pb-5">
+        <div className="mb-1.5 flex items-center justify-between">
+          <span className="text-xs text-[var(--text-muted)]">Blend with original</span>
+          <span className="font-mono text-xs text-[var(--text)]">
+            {Math.round(opacity * 100)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={opacity}
+          onChange={(e) => onOpacity(Number(e.target.value))}
+          aria-label="Layer opacity — lower values let the original show through"
+        />
+        <p className="mt-1.5 text-[11px] leading-snug text-[var(--text-muted)]/70">
+          100% replaces the frame · lower overlays the effect on the original
+        </p>
+      </label>
 
       <div className="mt-5 flex flex-col gap-5">
         {mode.controls.map((c) => (

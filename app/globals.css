@@ -93,6 +93,23 @@ input[type="range"]::-moz-range-thumb {
   100% { transform: translateY(100%); }
 }
 
+/* Wordmark: static RGB-split on hover — the product, in one hover. */
+.wordmark-accent {
+  transition: text-shadow 0.15s ease;
+}
+.wordmark:hover .wordmark-accent {
+  text-shadow:
+    2px 0 var(--mode-glitch),
+    -2px 0 var(--mode-glitch-2);
+}
+
+/* Mode-colored glow behind the output canvas — the stage feels lit by the
+   active mode. Uses the runtime --accent, so it retints on mode switch. */
+.stage-glow {
+  box-shadow: 0 0 80px -24px color-mix(in srgb, var(--accent) 45%, transparent);
+  transition: box-shadow 0.3s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

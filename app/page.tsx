@@ -23,7 +23,7 @@ export default function Home() {
 
   // The effect stack (>=1 layer) and which layer the panel/rail edits.
   const [chain, setChain] = useState<Stage[]>(() => [
-    { id: "s0", mode: "ascii", params: { ...MODES.ascii.defaults } },
+    { id: "s0", mode: "ascii", params: { ...MODES.ascii.defaults }, opacity: 1 },
   ]);
   const [selected, setSelected] = useState(0);
   const [asciiText, setAsciiText] = useState<string | null>(null);
@@ -123,6 +123,9 @@ export default function Home() {
       c.map((s, i) => (i === selected ? { ...s, params: { ...s.params, [key]: value } } : s)),
     );
 
+  const setOpacity = (v: number) =>
+    setChain((c) => c.map((s, i) => (i === selected ? { ...s, opacity: v } : s)));
+
   const resetParams = () =>
     setChain((c) =>
       c.map((s, i) => (i === selected ? { ...s, params: { ...MODES[s.mode].defaults } } : s)),
@@ -203,7 +206,7 @@ export default function Home() {
           </div>
         </main>
 
-        <aside className="shrink-0 border-t border-[var(--hairline)] bg-[var(--surface)] p-4 md:w-80 md:border-t-0 md:border-l md:overflow-y-auto">
+        <aside className="max-h-[42dvh] shrink-0 overflow-y-auto border-t border-[var(--hairline)] bg-[var(--surface)] p-4 md:max-h-none md:w-80 md:border-t-0 md:border-l">
           <StackEditor
             stages={chain}
             selected={selected}
@@ -215,6 +218,8 @@ export default function Home() {
           <ParamPanel
             mode={mode}
             params={current.params}
+            opacity={current.opacity ?? 1}
+            onOpacity={setOpacity}
             onChange={setParam}
             onReset={resetParams}
           />
@@ -258,8 +263,11 @@ function Header({
   return (
     <header className="flex items-center justify-between gap-4 border-b border-[var(--hairline)] bg-[var(--surface)] px-4 py-2.5">
       <div className="flex items-baseline gap-3">
-        <span className="font-mono text-lg font-bold tracking-tight">
-          Glitch<span style={{ color: "var(--accent)" }}>Core</span>
+        <span className="wordmark font-mono text-lg font-bold tracking-tight">
+          Glitch
+          <span className="wordmark-accent" style={{ color: "var(--accent)" }}>
+            Core
+          </span>
         </span>
         <span className="hidden font-mono text-[11px] text-[var(--text-muted)] sm:inline">
           image effects

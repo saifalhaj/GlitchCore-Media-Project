@@ -34,22 +34,30 @@ export function StackEditor({
         {stages.map((s, i) => {
           const mode = MODES[s.mode];
           const active = i === selected;
+          const pct = Math.round((s.opacity ?? 1) * 100);
           return (
             <div key={s.id} className="flex shrink-0 items-center gap-1">
               {i > 0 && <span className="text-[var(--text-muted)]/50">→</span>}
               <button
                 type="button"
                 onClick={() => onSelect(i)}
-                className="rounded-[var(--radius-sm)] border px-2 py-1 font-mono text-[11px] transition-colors"
+                title={`Layer ${i + 1}: ${mode.name}${pct < 100 ? ` at ${pct}%` : ""}`}
+                className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border px-2 py-1 font-mono text-[11px] transition-all"
                 style={{
                   borderColor: active ? mode.color : "var(--hairline)",
                   color: active ? mode.color : "var(--text-muted)",
                   background: active
                     ? `color-mix(in srgb, ${mode.color} 12%, var(--surface-2))`
                     : "var(--surface-2)",
+                  boxShadow: active ? `0 0 10px -4px ${mode.color}` : "none",
                 }}
               >
-                <span className="opacity-50">{i + 1}</span> {mode.name}
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ background: mode.color, opacity: active ? 1 : 0.5 }}
+                />
+                {mode.name}
+                {pct < 100 && <span className="opacity-60">{pct}%</span>}
               </button>
             </div>
           );

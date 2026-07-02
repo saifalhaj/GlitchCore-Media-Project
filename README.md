@@ -15,7 +15,7 @@ mode, so the switcher doubles as a gallery of what the tool does.
 | **Glitchcore** | Stacked datamosh: RGB channel shift, pixel sort (Kim Asendorf style), block corruption, scanlines. Seeded so a glitch is reproducible until re-rolled. |
 | **YOLO** | Real object detection with **YOLO11n** running in your browser via `onnxruntime-web` (WebGPU with automatic WASM fallback). Boxes + labels on a separate overlay layer. |
 | **Halftone** | Ordered dithering (Bayer 4×4 / 8×8), Floyd–Steinberg error diffusion, and true dot halftone. Mono or duotone. |
-| **Edge Map** | Sobel gradient magnitude → line art, with threshold, invert, and blend-with-original. |
+| **Edge Map** | Sobel gradient magnitude → line art, with threshold and invert. |
 | **Depth** | Monocular depth estimation (**Depth-Anything V2 small**, ONNX) in the browser — near is bright. Turbo or grayscale colormap, invertible. |
 
 Each effect is a pure function in [`lib/effects/`](lib/effects) — independently
@@ -28,6 +28,12 @@ ASCII`, `Depth → Halftone`, `Glitchcore → Halftone`, whatever — piped
 source → … → output. The mode rail sets the *selected* layer, **＋ add** appends
 one, and you can reorder or remove layers. YOLO bakes its boxes into the frame,
 so it composes like any other layer.
+
+Every layer has a **Blend with original** slider: at 100% the effect replaces
+the frame; lower values composite it over the layer's input, so the original
+shows through — ASCII glyphs ghosted over the photo, a translucent depth tint,
+softened glitch. Blend is part of the shareable recipe and applies per-frame in
+video too.
 
 The **entire stack** (every layer's mode + params) is encoded into the URL, so
 **Copy link** produces a link that reproduces the exact result — no server, no

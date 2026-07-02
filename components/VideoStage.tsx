@@ -166,7 +166,7 @@ export function VideoStage({
       <div className="grid min-h-0 place-items-center">
         <canvas
           ref={canvasRef}
-          className="checker max-h-full max-w-full rounded-[var(--radius-sm)]"
+          className="checker stage-glow max-h-full max-w-full rounded-[var(--radius-sm)]"
           style={{ imageRendering: pixelated ? "pixelated" : "auto" }}
         />
         <video

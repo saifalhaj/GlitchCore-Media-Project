@@ -14,7 +14,7 @@ export function encodeEditor(state: EditorState): string {
   // CompressionStream pass only if stacks ever get large enough to matter.
   const payload = {
     se: state.selected,
-    c: state.chain.map((s) => ({ m: s.mode, p: s.params })),
+    c: state.chain.map((s) => ({ m: s.mode, p: s.params, o: s.opacity })),
   };
   return b64urlEncode(JSON.stringify(payload));
 }
@@ -49,10 +49,12 @@ export function decodeEditor(raw: string): EditorState | null {
   for (const item of c) {
     const m = (item as { m?: unknown })?.m;
     if (typeof m !== "string" || !MODE_ORDER.includes(m as ModeId)) continue;
+    const oRaw = Number((item as { o?: unknown })?.o);
     chain.push({
       id: crypto.randomUUID(),
       mode: m as ModeId,
       params: sanitizeParams(m as ModeId, (item as { p?: unknown })?.p),
+      opacity: Number.isFinite(oRaw) ? Math.min(1, Math.max(0, oRaw)) : 1,
     });
   }
   if (chain.length === 0) return null;
