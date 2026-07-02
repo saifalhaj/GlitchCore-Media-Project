@@ -1,6 +1,9 @@
 "use client";
 
 import type { Control, ModeDef, ParamValue, Params } from "@/lib/modes";
+import type { BlendMode } from "@/lib/image";
+
+const BLEND_MODES: BlendMode[] = ["normal", "multiply", "screen"];
 
 function fmt(v: number, step: number, unit?: string) {
   const s = step < 1 ? v.toFixed(2) : String(Math.round(v));
@@ -11,14 +14,18 @@ export function ParamPanel({
   mode,
   params,
   opacity,
+  blend,
   onOpacity,
+  onBlend,
   onChange,
   onReset,
 }: {
   mode: ModeDef;
   params: Params;
   opacity: number;
+  blend: BlendMode;
   onOpacity: (v: number) => void;
+  onBlend: (m: BlendMode) => void;
   onChange: (key: string, value: ParamValue) => void;
   onReset: () => void;
 }) {
@@ -40,28 +47,54 @@ export function ParamPanel({
         {mode.tagline}
       </p>
 
-      {/* Layer-level blend: 100% = effect replaces the frame, lower = the
-          original shows through underneath. */}
-      <label className="mt-5 block border-b border-[var(--hairline)] pb-5">
-        <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs text-[var(--text-muted)]">Blend with original</span>
-          <span className="font-mono text-xs text-[var(--text)]">
-            {Math.round(opacity * 100)}%
-          </span>
+      {/* Layer-level compositing: opacity + blend mode against the layer's input. */}
+      <div className="mt-5 border-b border-[var(--hairline)] pb-5">
+        <label className="block">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs text-[var(--text-muted)]">Blend with original</span>
+            <span className="font-mono text-xs text-[var(--text)]">
+              {Math.round(opacity * 100)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={opacity}
+            onChange={(e) => onOpacity(Number(e.target.value))}
+            aria-label="Layer opacity — lower values let the original show through"
+          />
+        </label>
+        <div className="mt-2.5 flex gap-1" role="radiogroup" aria-label="Blend mode">
+          {BLEND_MODES.map((m) => {
+            const active = m === blend;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => onBlend(m)}
+                className="flex-1 rounded-[var(--radius-sm)] border px-2 py-1 font-mono text-[11px] transition-colors"
+                style={{
+                  borderColor: active ? "var(--accent)" : "var(--hairline)",
+                  color: active ? "var(--accent)" : "var(--text-muted)",
+                  background: active
+                    ? "color-mix(in srgb, var(--accent) 10%, var(--surface-2))"
+                    : "var(--surface-2)",
+                }}
+              >
+                {m}
+              </button>
+            );
+          })}
         </div>
-        <input
-          type="range"
-          min={0}
-          max={1}
-          step={0.01}
-          value={opacity}
-          onChange={(e) => onOpacity(Number(e.target.value))}
-          aria-label="Layer opacity — lower values let the original show through"
-        />
         <p className="mt-1.5 text-[11px] leading-snug text-[var(--text-muted)]/70">
-          100% replaces the frame · lower overlays the effect on the original
+          100% normal replaces the frame · lower opacity or multiply/screen
+          overlays the effect on the original
         </p>
-      </label>
+      </div>
 
       <div className="mt-5 flex flex-col gap-5">
         {mode.controls.map((c) => (

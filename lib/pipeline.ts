@@ -22,5 +22,8 @@ export async function produceStage(stage: Stage, source: ImageData): Promise<Eff
   } else {
     return { imageData: source };
   }
-  return { imageData: blendImageData(r.imageData, source, opacity), text: r.text };
+  return {
+    imageData: blendImageData(r.imageData, source, opacity, stage.blend ?? "normal"),
+    text: r.text,
+  };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { Stage } from "@/lib/modes";
 import { produceStage } from "@/lib/pipeline";
 import { drawImageData } from "@/lib/image";
@@ -29,6 +29,81 @@ export function CanvasStage({
   const [status, setStatus] = useState<StageStatus>("processing");
   const [missingMode, setMissingMode] = useState<"yolo" | "depth" | null>(null);
   const lastMode = stages[stages.length - 1]?.mode;
+
+  // Before/after compare: a draggable divider revealing the original on the left.
+  const [compare, setCompare] = useState(false);
+  const [comparePos, setComparePos] = useState(0.5);
+  const compareRef = useRef<HTMLCanvasElement>(null);
+  const srcCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Cache the raw source once per image; repaints during a drag only drawImage it.
+  useEffect(() => {
+    const c = document.createElement("canvas");
+    c.width = source.width;
+    c.height = source.height;
+    c.getContext("2d")!.putImageData(source, 0, 0);
+    srcCanvasRef.current = c;
+  }, [source]);
+
+  const paintCompare = useCallback((pos: number) => {
+    const base = baseRef.current;
+    const cmp = compareRef.current;
+    const src = srcCanvasRef.current;
+    if (!base || !cmp || !src || !base.width) return;
+    if (cmp.width !== base.width) cmp.width = base.width;
+    if (cmp.height !== base.height) cmp.height = base.height;
+    const ctx = cmp.getContext("2d")!;
+    ctx.clearRect(0, 0, cmp.width, cmp.height);
+    ctx.drawImage(src, 0, 0, cmp.width, cmp.height);
+    // Divider line at the reveal edge, tinted to the active mode.
+    const accent = getComputedStyle(cmp).getPropertyValue("--accent").trim() || "#edebe3";
+    const x = Math.round(pos * cmp.width);
+    ctx.fillStyle = accent;
+    ctx.fillRect(Math.min(cmp.width - 2, Math.max(0, x - 1)), 0, 2, cmp.height);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Repaint whenever the divider moves, the result re-renders, or compare toggles on.
+  useEffect(() => {
+    if (compare) paintCompare(comparePos);
+  }, [compare, comparePos, status, source, paintCompare]);
+
+  const dragTo = useCallback(
+    (clientX: number) => {
+      const base = baseRef.current;
+      if (!base) return;
+      const rect = base.getBoundingClientRect();
+      if (!rect.width) return;
+      setComparePos(Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)));
+    },
+    [baseRef],
+  );
+
+  // Native pointer listeners (not React's delegated ones) so the drag also works
+  // for synthetic/automated pointers; covers mouse, touch, and pen alike.
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!compare || !el) return;
+    const down = (e: PointerEvent) => {
+      if ((e.target as HTMLElement).closest("button")) return; // toggle button, not a drag
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        // stale/synthetic pointer id — capture is a nicety, dragging still works
+      }
+      dragTo(e.clientX);
+    };
+    const move = (e: PointerEvent) => {
+      if (e.buttons) dragTo(e.clientX);
+    };
+    el.addEventListener("pointerdown", down);
+    el.addEventListener("pointermove", move);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      el.removeEventListener("pointermove", move);
+    };
+  }, [compare, dragTo]);
 
   useEffect(() => {
     const base = baseRef.current;
@@ -84,15 +159,60 @@ export function CanvasStage({
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source, JSON.stringify(stages.map((s) => ({ m: s.mode, p: s.params, o: s.opacity })))]);
+  }, [source, JSON.stringify(stages.map((s) => ({ m: s.mode, p: s.params, o: s.opacity, b: s.blend })))]);
 
   return (
-    <div className="relative grid h-full w-full place-items-center overflow-hidden p-4 sm:p-6">
+    <div
+      ref={containerRef}
+      className="relative grid h-full w-full place-items-center overflow-hidden p-4 sm:p-6"
+      style={compare ? { cursor: "ew-resize", touchAction: "none" } : undefined}
+      role={compare ? "slider" : undefined}
+      aria-label={compare ? "Before/after divider" : undefined}
+      aria-valuenow={compare ? Math.round(comparePos * 100) : undefined}
+      tabIndex={compare ? 0 : undefined}
+      onKeyDown={compare ? (e) => {
+        if (e.key === "ArrowLeft") setComparePos((p) => Math.max(0, p - 0.02));
+        if (e.key === "ArrowRight") setComparePos((p) => Math.min(1, p + 0.02));
+      } : undefined}
+    >
       <canvas
         ref={baseRef}
-        className="checker stage-glow max-h-full max-w-full rounded-[var(--radius-sm)]"
+        className="checker stage-glow col-start-1 row-start-1 max-h-full max-w-full rounded-[var(--radius-sm)]"
         style={{ imageRendering: lastMode === "ascii" || lastMode === "halftone" ? "pixelated" : "auto" }}
       />
+      {compare && (
+        <canvas
+          ref={compareRef}
+          className="pointer-events-none col-start-1 row-start-1 max-h-full max-w-full rounded-[var(--radius-sm)]"
+          style={{ clipPath: `inset(0 ${(1 - comparePos) * 100}% 0 0)` }}
+        />
+      )}
+
+      <button
+        type="button"
+        onClick={() => setCompare((v) => !v)}
+        className="absolute left-3 top-3 rounded-full border px-2.5 py-0.5 font-mono text-[10px] transition-colors"
+        style={{
+          borderColor: compare ? "var(--accent)" : "var(--hairline)",
+          color: compare ? "var(--accent)" : "var(--text-muted)",
+          background: compare
+            ? "color-mix(in srgb, var(--accent) 12%, var(--surface))"
+            : "color-mix(in srgb, var(--surface) 90%, transparent)",
+        }}
+        title="Drag the divider to compare against the original"
+      >
+        compare
+      </button>
+      {compare && (
+        <>
+          <span className="pointer-events-none absolute bottom-3 left-3 font-mono text-[10px] text-[var(--text-muted)]">
+            original
+          </span>
+          <span className="pointer-events-none absolute bottom-3 right-3 font-mono text-[10px] text-[var(--text-muted)]">
+            result
+          </span>
+        </>
+      )}
 
       {status === "processing" && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">

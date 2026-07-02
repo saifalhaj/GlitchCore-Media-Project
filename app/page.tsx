@@ -10,7 +10,7 @@ import { UploadZone } from "@/components/UploadZone";
 import { VideoStage, type VideoMeta } from "@/components/VideoStage";
 import { MODES, makeStage, type ParamValue, type Stage } from "@/lib/modes";
 import type { ModeId } from "@/lib/effects/types";
-import { decodeToImageData, resizeImageData } from "@/lib/image";
+import { decodeToImageData, resizeImageData, type BlendMode } from "@/lib/image";
 import { editorToUrl, readEditorFromLocation } from "@/lib/recipe";
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
 
   // The effect stack (>=1 layer) and which layer the panel/rail edits.
   const [chain, setChain] = useState<Stage[]>(() => [
-    { id: "s0", mode: "ascii", params: { ...MODES.ascii.defaults }, opacity: 1 },
+    { id: "s0", mode: "ascii", params: { ...MODES.ascii.defaults }, opacity: 1, blend: "normal" },
   ]);
   const [selected, setSelected] = useState(0);
   const [asciiText, setAsciiText] = useState<string | null>(null);
@@ -126,6 +126,9 @@ export default function Home() {
   const setOpacity = (v: number) =>
     setChain((c) => c.map((s, i) => (i === selected ? { ...s, opacity: v } : s)));
 
+  const setBlend = (b: BlendMode) =>
+    setChain((c) => c.map((s, i) => (i === selected ? { ...s, blend: b } : s)));
+
   const resetParams = () =>
     setChain((c) =>
       c.map((s, i) => (i === selected ? { ...s, params: { ...MODES[s.mode].defaults } } : s)),
@@ -219,7 +222,9 @@ export default function Home() {
             mode={mode}
             params={current.params}
             opacity={current.opacity ?? 1}
+            blend={current.blend ?? "normal"}
             onOpacity={setOpacity}
+            onBlend={setBlend}
             onChange={setParam}
             onReset={resetParams}
           />

@@ -29,11 +29,15 @@ source → … → output. The mode rail sets the *selected* layer, **＋ add** 
 one, and you can reorder or remove layers. YOLO bakes its boxes into the frame,
 so it composes like any other layer.
 
-Every layer has a **Blend with original** slider: at 100% the effect replaces
-the frame; lower values composite it over the layer's input, so the original
-shows through — ASCII glyphs ghosted over the photo, a translucent depth tint,
-softened glitch. Blend is part of the shareable recipe and applies per-frame in
-video too.
+Every layer has a **Blend with original** slider plus a **blend mode**
+(normal / multiply / screen): at 100% normal the effect replaces the frame;
+lower opacity or multiply/screen composite it over the layer's input, so the
+original shows through — ASCII glyphs screened over the photo, a translucent
+depth tint, softened glitch. Blend settings are part of the shareable recipe
+and apply per-frame in video too.
+
+A **compare** toggle on the stage adds a draggable divider (arrow keys work
+too) revealing the original on the left and the result on the right.
 
 The **entire stack** (every layer's mode + params) is encoded into the URL, so
 **Copy link** produces a link that reproduces the exact result — no server, no

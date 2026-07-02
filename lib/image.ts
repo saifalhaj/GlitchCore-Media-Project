@@ -107,15 +107,19 @@ export function drawDetectionsCtx(
   }
 }
 
+/** How a layer composites over its input — native canvas composite ops. */
+export type BlendMode = "normal" | "multiply" | "screen";
+
 /** Composite an effect frame at `opacity` over its source (scaled to the
- *  effect's dimensions — ASCII/halftone change size). opacity 1 = pure effect,
- *  0 = pure original; the layer-opacity model every design tool uses. */
+ *  effect's dimensions — ASCII/halftone change size). opacity 1 + normal =
+ *  pure effect; the layer-opacity/blend-mode model every design tool uses. */
 export function blendImageData(
   effect: ImageData,
   source: ImageData,
   opacity: number,
+  mode: BlendMode = "normal",
 ): ImageData {
-  if (opacity >= 1) return effect;
+  if (opacity >= 1 && mode === "normal") return effect;
   const out = newCanvas(effect.width, effect.height);
   const ctx = out.getContext("2d", { willReadFrequently: true })!;
   const src = newCanvas(source.width, source.height);
@@ -123,6 +127,7 @@ export function blendImageData(
   ctx.drawImage(src, 0, 0, effect.width, effect.height);
   const eff = newCanvas(effect.width, effect.height);
   eff.getContext("2d")!.putImageData(effect, 0, 0);
+  ctx.globalCompositeOperation = mode === "normal" ? "source-over" : mode;
   ctx.globalAlpha = Math.max(0, opacity);
   ctx.drawImage(eff, 0, 0);
   return ctx.getImageData(0, 0, effect.width, effect.height);
