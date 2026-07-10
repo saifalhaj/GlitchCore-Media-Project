@@ -1,7 +1,7 @@
 # GlitchCore — image effects
 
-Upload an image or a short video, run it through ten algorithmic modes, tune
-each live, export the result. **Everything runs client-side** — nothing is
+Upload an image or a short video, run it through nineteen algorithmic modes,
+tune each live, export the result. **Everything runs client-side** — nothing is
 uploaded, there is no server, no database, no accounts.
 
 Two routes:
@@ -15,25 +15,48 @@ Two routes:
   **Advanced**. Live thumbnails in the mode rail show the current media
   already run through each mode, so the switcher doubles as a gallery.
 
-## The ten modes
+## The nineteen modes
+
+Modes fall into three archetypes — **sync-pixel** (stateless, run live on video),
+**temporal** (need frame history, video-only), and **model** (ONNX inference,
+still-only, skipped on video).
+
+**Sync-pixel** (all run live on image *and* video):
 
 | Mode | What it does |
 |------|--------------|
-| **ASCII** | Samples the image on a grid, maps cell luminance to a character ramp, rasterizes to canvas (and keeps the raw text for copy-as-text). Mono or sampled color, three ramps, invert. |
-| **Glitchcore** | Stacked datamosh: RGB channel shift, pixel sort (Kim Asendorf style), block corruption, scanlines. Seeded so a glitch is reproducible until re-rolled. |
-| **Vision** | A *fake* real-time detection HUD — boxes, tracked integer IDs, hub-and-spoke connectors, cyan accents. Procedural, so unlike real YOLO it runs **live on video**. Colors are user-editable. |
-| **YOLO** | Real object detection with **YOLO11n** running in your browser via `onnxruntime-web` (WebGPU with automatic WASM fallback). Boxes + labels baked into the frame so it stacks like any layer. |
-| **Halftone** | Ordered dithering (Bayer 4×4 / 8×8), Floyd–Steinberg error diffusion, and true dot halftone. Mono or duotone. |
-| **False-color** | Luminance mapped through a thermal (ironbow / white-hot / medical / turbo) or a 2-color **duotone** ramp, with gain, bias, and isotherm banding. Predator-vision and single-ink editorial looks. |
-| **Edge Map** | Sobel gradient magnitude → line art, with threshold and invert. |
-| **Depth** | Monocular depth estimation (**Depth-Anything V2 small**, ONNX) in the browser — near is bright. Turbo or grayscale colormap, invertible. |
-| **Kaleidoscope** | Coordinate remap into mirror & rotational symmetry — kaleido, quad-mirror, or single-axis fold, with adjustable segments, angle, center, and zoom. |
-| **Pixelate** | Block-average mosaic — square, dot-grid, or hex; the classic censor / vaporwave look. |
+| **ASCII** | Luminance mapped to a character ramp on a sampled grid; mono/sampled color, ramps, invert. Keeps the text for copy-as-text. |
+| **Glitchcore** | Stacked datamosh: RGB shift, pixel sort (Kim Asendorf), block corruption, scanlines. Seeded. |
+| **Vision** | A *fake* real-time detection HUD — boxes, tracked IDs, hub-and-spoke connectors, cyan accents. Procedural, so it runs live on video where real YOLO can't. Editable colors. |
+| **Halftone** | Bayer 4×4 / 8×8 ordered dither, Floyd–Steinberg, true dot halftone; mono/duotone. |
+| **False-color** | Luminance through a thermal (ironbow/white-hot/medical/turbo) or duotone ramp; gain, bias, isotherm bands. |
+| **Edge Map** | Sobel gradient magnitude → line art; threshold, invert. |
+| **Kaleidoscope** | Mirror & rotational symmetry remap — kaleido, quad, single-axis; segments, angle, center, zoom. |
+| **Pixelate** | Block-average mosaic — square, dot-grid, or hex. |
+| **CRT / VHS** | Analog-TV death: barrel glass, YCbCr chroma bleed, phosphor mask, scanlines, vignette, roll/tracking tear, snow. |
+| **Contour** | Luminance quantized into elevation bands with traced iso-lines; mono/turbo/ink/terrain palettes. |
+| **Low-poly** | Edge-biased jittered-grid triangles or Voronoi cells, flat-shaded; optional wireframe. |
+| **Word raster** | Semantic ASCII — the image as a grid of whole words, toned by opacity/weight, dissolving at the edges (a custom **vocabulary**). |
+
+**Temporal** (video-only; degrade to identity on a still):
+
+| Mode | What it does |
+|------|--------------|
+| **Slit-scan** | Every band sampled from a different moment in the frame history — motion smears across time. |
+| **Trails** | Feedback echo / datamosh smear — each frame decays into the next; lighten/screen/onion, motion highlight. |
+
+**Model** (in-browser ONNX; still-only, WebGPU with automatic WASM fallback):
+
+| Mode | What it does |
+|------|--------------|
+| **YOLO** | Real object detection (**YOLO11n**) — boxes + labels baked into the frame. |
+| **Depth** | Monocular depth (**Depth-Anything V2 small**) — near is bright; turbo/grayscale. |
+| **Pose** | Human keypoint skeletons (**MoveNet MultiPose**) — joints & bones as a HUD. |
+| **Cutout** | Subject isolation (**RMBG-1.4**) — transparent, spotlight, or solid background. |
+| **Depth 3D** | Depth reprojected into fog, parallax, anaglyph, or a point cloud (reuses the Depth model). |
 
 Each effect is a pure function in [`lib/effects/`](lib/effects) — independently
-testable and swappable. Vision, False-color, Kaleidoscope, and Pixelate are all
-sync-pixel effects, so they run **live on video** where the model-backed modes
-(YOLO, Depth) are still-only.
+testable and swappable.
 
 ## Stacking & sharing
 
@@ -84,20 +107,26 @@ npm run build    # production build
 
 ## The ONNX models
 
-Two models are committed and served as static assets:
+Four models are committed and served as static assets:
 
-- `public/models/yolo11n.onnx` (~10 MB, YOLO11n, 640 input) — detection
-- `public/models/depth-anything-v2-small.onnx` (~27 MB, int8 quantized, 518 input) — depth
+- `public/models/yolo11n.onnx` (~10 MB, 640 input) — YOLO detection
+- `public/models/depth-anything-v2-small.onnx` (~27 MB int8, 518 input) — Depth + Depth 3D
+- `public/models/movenet-multipose.onnx` (~19 MB fp32, 256 input) — Pose
+- `public/models/rmbg-1.4.onnx` (~44 MB quantized, 1024 input) — Cutout
 
-Both load lazily on first use of their mode, try WebGPU first and fall back to
-WASM, and share the cached session. If a model file is missing, that mode shows
-the source image unaltered with a drop-in note — every other mode is unaffected.
-Depth is compute-heavy; expect a few seconds on WASM (much faster on WebGPU).
+They load lazily on first use of their mode, try WebGPU first and fall back to
+WASM — both at session-create time and, via `lib/effects/modelSession.ts`, if a
+kernel fails mid-run (MoveNet's GatherND does this on the WebGPU/jsep backend, so
+Pose runs on WASM). If a model file is missing, that mode shows the source
+unaltered with a drop-in note — every other mode is unaffected. These are
+compute-heavy; expect a few seconds (Cutout/RMBG the most).
 
-> ⚠️ **Licensing:** Ultralytics YOLO models are AGPL-3.0 (or require an
-> Ultralytics Enterprise license for closed-source commercial use). Fine for a
-> personal / open project; revisit if this ever ships as closed-source
-> commercial software.
+> ⚠️ **Model licensing** (fine for a personal / open project; revisit before any
+> commercial use):
+> - **YOLO11n** — AGPL-3.0 (Ultralytics), or an Enterprise license for closed source.
+> - **RMBG-1.4** (Cutout) — Bria's license is **non-commercial**; a commercial
+>   license must be obtained from Bria for commercial use.
+> - **Depth-Anything V2 small**, **MoveNet** (Pose) — permissive (Apache-2.0).
 
 ## Deploy
 

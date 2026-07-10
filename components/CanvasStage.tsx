@@ -13,6 +13,16 @@ export type StageStatus =
 
 export type Stats = { ms: number; status: StageStatus };
 
+// Model-backed modes → the file they load (for the "model not found" notice).
+const MODEL_FILES: Record<string, { name: string; file: string }> = {
+  yolo: { name: "YOLO", file: "yolo11n.onnx" },
+  depth: { name: "Depth", file: "depth-anything-v2-small.onnx" },
+  pose: { name: "Pose (MoveNet)", file: "movenet-multipose.onnx" },
+  cutout: { name: "Cutout (RMBG)", file: "rmbg-1.4.onnx" },
+  depth3d: { name: "Depth 3D", file: "depth-anything-v2-small.onnx" },
+};
+const isModelMode = (m: string): boolean => m in MODEL_FILES;
+
 export function CanvasStage({
   source,
   stages,
@@ -27,7 +37,7 @@ export function CanvasStage({
   onStats: (s: Stats) => void;
 }) {
   const [status, setStatus] = useState<StageStatus>("processing");
-  const [missingMode, setMissingMode] = useState<"yolo" | "depth" | null>(null);
+  const [missingMode, setMissingMode] = useState<string | null>(null);
   const lastMode = stages[stages.length - 1]?.mode;
 
   // Before/after compare: a draggable divider revealing the original on the left.
@@ -116,7 +126,7 @@ export function CanvasStage({
       onStats(s);
     };
 
-    const hasModel = stages.some((s) => s.mode === "yolo" || s.mode === "depth");
+    const hasModel = stages.some((s) => isModelMode(s.mode));
     report({ ms: 0, status: hasModel ? "loading-model" : "processing" });
 
     const run = async () => {
@@ -124,14 +134,14 @@ export function CanvasStage({
       if (hasModel) drawImageData(base, source); // placeholder while a model loads
       let acc = source;
       let text: string | null = null;
-      let current: "yolo" | "depth" | null = null;
+      let current: string | null = null;
       try {
         for (const s of stages) {
-          current = s.mode === "yolo" || s.mode === "depth" ? s.mode : null;
+          current = isModelMode(s.mode) ? s.mode : null;
           const r = await produceStage(s, acc);
           if (cancelled) return;
           acc = r.imageData;
-          if (s.mode === "ascii") text = r.text ?? null;
+          if (s.mode === "ascii" || s.mode === "words") text = r.text ?? null;
         }
         drawImageData(base, acc);
         onAsciiText(text);
@@ -242,12 +252,10 @@ export function CanvasStage({
         >
           <p className="font-mono text-[11px] leading-relaxed text-[var(--text)]">
             <span style={{ color: "var(--accent)" }}>
-              {missingMode === "depth" ? "Depth model not found." : "YOLO model not found."}
+              {(missingMode && MODEL_FILES[missingMode]?.name) ?? "Model"} model not found.
             </span>{" "}
             Drop{" "}
-            <code>
-              {missingMode === "depth" ? "depth-anything-v2-small.onnx" : "yolo11n.onnx"}
-            </code>{" "}
+            <code>{(missingMode && MODEL_FILES[missingMode]?.file) ?? "the model"}</code>{" "}
             into <code>public/models/</code> to enable it. Showing the stack up to
             that stage.
           </p>

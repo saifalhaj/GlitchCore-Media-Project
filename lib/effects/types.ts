@@ -18,7 +18,10 @@ export type ModeId =
   | "lowpoly"
   | "words"
   | "slitscan"
-  | "trails";
+  | "trails"
+  | "pose"
+  | "cutout"
+  | "depth3d";
 
 /** Output of a pixel effect. `text` is only set by ASCII (the raw character grid,
  *  retained for "Copy as text" — the canvas is a rasterization of it). */
@@ -192,6 +195,34 @@ export type TrailsParams = {
   smearPx: number; // directional smear of the feedback each frame
   diffHighlight: boolean; // highlight moving pixels
   tint: string; // #rrggbb for the motion highlight
+};
+
+export type PoseParams = {
+  minKeypointScore: number; // 0–1 drop low-confidence joints
+  jointRadius: number; // px
+  boneWidth: number; // px
+  colorScheme: "accent" | "thermal" | "mono";
+  showJoints: boolean;
+  showConfidence: boolean;
+};
+
+export type CutoutParams = {
+  output: "transparent" | "spotlight" | "solid";
+  matteThreshold: number; // 0–1 smoothstep center
+  feather: number; // px matte blur
+  bgBlur: number; // px background blur (spotlight)
+  bgDim: number; // 0–1 background darken (spotlight)
+  bgColor: string; // #rrggbb (solid)
+  invert: boolean; // swap subject/background
+};
+
+export type Depth3dParams = {
+  style: "fog" | "parallax" | "anaglyph" | "pointcloud";
+  strength: number; // 0–1 effect intensity
+  fogTone: string; // #rrggbb (fog)
+  background: string; // #rrggbb (parallax gaps / pointcloud bg)
+  dotSize: number; // px (pointcloud)
+  invert: boolean; // swap near/far
 };
 
 /** A single YOLO detection in source-image pixel coordinates (top-left origin). */

@@ -10,8 +10,18 @@ import {
 } from "./modes";
 import { detectAndBake } from "./effects/yolo";
 import { estimateDepth } from "./effects/depth";
+import { poseBake } from "./effects/pose";
+import { cutout } from "./effects/cutout";
+import { depth3d } from "./effects/depth3d";
 import { blendImageData } from "./image";
-import type { EffectResult, DepthParams, YoloParams } from "./effects/types";
+import type {
+  EffectResult,
+  DepthParams,
+  YoloParams,
+  PoseParams,
+  CutoutParams,
+  Depth3dParams,
+} from "./effects/types";
 
 /** Produce one stage's output from an input frame, composited at the layer's
  *  opacity over its input. May throw MODEL_UNAVAILABLE (from a YOLO/Depth
@@ -23,6 +33,12 @@ export async function produceStage(stage: Stage, source: ImageData): Promise<Eff
     r = { imageData: await detectAndBake(source, stage.params as unknown as YoloParams) };
   } else if (stage.mode === "depth") {
     r = { imageData: await estimateDepth(source, stage.params as unknown as DepthParams) };
+  } else if (stage.mode === "pose") {
+    r = { imageData: await poseBake(source, stage.params as unknown as PoseParams) };
+  } else if (stage.mode === "cutout") {
+    r = { imageData: await cutout(source, stage.params as unknown as CutoutParams) };
+  } else if (stage.mode === "depth3d") {
+    r = { imageData: await depth3d(source, stage.params as unknown as Depth3dParams) };
   } else if (isPixelMode(stage.mode)) {
     r = runPixelEffect(stage.mode, source, stage.params);
   } else if (isTemporalMode(stage.mode)) {

@@ -85,6 +85,9 @@ export const MODE_ORDER: ModeId[] = [
   "words",
   "slitscan",
   "trails",
+  "pose",
+  "cutout",
+  "depth3d",
 ];
 
 export const MODES: Record<ModeId, ModeDef> = {
@@ -610,6 +613,105 @@ export const MODES: Record<ModeId, ModeDef> = {
     ],
     defaults: { persistence: 0.85, mode: "lighten", smearPx: 0, diffHighlight: false, tint: "#ff2a6d" },
   },
+
+  pose: {
+    id: "pose",
+    name: "Pose",
+    tagline: "Real human keypoint skeletons (MoveNet) — joints and bones as a HUD overlay. Still-only.",
+    color: "var(--mode-pose)",
+    controls: [
+      { kind: "slider", key: "minKeypointScore", label: "Min score", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "jointRadius", label: "Joint size", min: 1, max: 10, step: 1, unit: "px" },
+      { kind: "slider", key: "boneWidth", label: "Bone width", min: 1, max: 8, step: 1, unit: "px" },
+      {
+        kind: "select",
+        key: "colorScheme",
+        label: "Color",
+        options: [
+          { value: "accent", label: "Accent" },
+          { value: "thermal", label: "Thermal" },
+          { value: "mono", label: "Mono" },
+        ],
+      },
+      { kind: "toggle", key: "showJoints", label: "Joints" },
+      { kind: "toggle", key: "showConfidence", label: "Confidence" },
+    ],
+    defaults: {
+      minKeypointScore: 0.3,
+      jointRadius: 4,
+      boneWidth: 3,
+      colorScheme: "accent",
+      showJoints: true,
+      showConfidence: false,
+    },
+  },
+
+  cutout: {
+    id: "cutout",
+    name: "Cutout",
+    tagline: "In-browser subject isolation (RMBG) — transparent, spotlight, or solid background. Still-only.",
+    color: "var(--mode-cutout)",
+    controls: [
+      {
+        kind: "select",
+        key: "output",
+        label: "Background",
+        options: [
+          { value: "transparent", label: "Transparent" },
+          { value: "spotlight", label: "Spotlight" },
+          { value: "solid", label: "Solid color" },
+        ],
+      },
+      { kind: "slider", key: "matteThreshold", label: "Threshold", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "feather", label: "Feather", min: 0, max: 8, step: 1, unit: "px" },
+      { kind: "slider", key: "bgBlur", label: "BG blur", min: 0, max: 20, step: 1, unit: "px" },
+      { kind: "slider", key: "bgDim", label: "BG dim", min: 0, max: 1, step: 0.01 },
+      { kind: "color", key: "bgColor", label: "BG color" },
+      { kind: "toggle", key: "invert", label: "Invert" },
+    ],
+    defaults: {
+      output: "transparent",
+      matteThreshold: 0.5,
+      feather: 2,
+      bgBlur: 8,
+      bgDim: 0.5,
+      bgColor: "#0b0c0e",
+      invert: false,
+    },
+  },
+
+  depth3d: {
+    id: "depth3d",
+    name: "Depth 3D",
+    tagline: "Monocular depth reprojected into fog, parallax, anaglyph, or a point cloud. Still-only.",
+    color: "var(--mode-depth3d)",
+    controls: [
+      {
+        kind: "select",
+        key: "style",
+        label: "Style",
+        options: [
+          { value: "fog", label: "Depth fog" },
+          { value: "parallax", label: "Parallax" },
+          { value: "anaglyph", label: "Anaglyph 3D" },
+          { value: "pointcloud", label: "Point cloud" },
+        ],
+      },
+      { kind: "slider", key: "strength", label: "Strength", min: 0, max: 1, step: 0.01 },
+      { kind: "color", key: "fogTone", label: "Fog tone" },
+      { kind: "color", key: "background", label: "Background" },
+      { kind: "slider", key: "dotSize", label: "Dot size", min: 1, max: 8, step: 1, unit: "px" },
+      { kind: "toggle", key: "invert", label: "Invert" },
+    ],
+    defaults: {
+      style: "fog",
+      strength: 0.7,
+      fogTone: "#0b1e3a",
+      background: "#0b0c0e",
+      dotSize: 2,
+      invert: false,
+    },
+  },
 };
 
 /** Dispatch a synchronous, stateless pixel effect. Model modes (yolo/depth) and
@@ -774,4 +876,7 @@ export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   words: { ...MODES.words.defaults },
   slitscan: { ...MODES.slitscan.defaults },
   trails: { ...MODES.trails.defaults },
+  pose: { ...MODES.pose.defaults },
+  cutout: { ...MODES.cutout.defaults },
+  depth3d: { ...MODES.depth3d.defaults },
 };

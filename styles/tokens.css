@@ -34,6 +34,9 @@
   --mode-words: #f0a868;      /* warm editorial ochre */
   --mode-slitscan: #7aa2ff;   /* temporal periwinkle */
   --mode-trails: #5ff2c0;     /* feedback mint */
+  --mode-pose: #c8ff4d;       /* mocap lime */
+  --mode-cutout: #67e8f9;     /* studio ice */
+  --mode-depth3d: #e879f9;    /* anaglyph fuchsia */
 
   /* Active accent — reassigned to the active mode's hue at runtime. */
   --accent: var(--mode-ascii);

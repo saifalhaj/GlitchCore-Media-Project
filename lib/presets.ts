@@ -107,6 +107,24 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Ghost dissolve", params: { persistence: 0.75, mode: "onion", smearPx: 0, diffHighlight: false } },
     { name: "Motion scanner", params: { persistence: 0.6, mode: "lighten", smearPx: 0, diffHighlight: true, tint: "#ff2a6d" } },
   ],
+  pose: [
+    { name: "Skeleton", params: { colorScheme: "accent", jointRadius: 4, boneWidth: 3, showJoints: true, showConfidence: false } },
+    { name: "Wireframe", params: { colorScheme: "mono", jointRadius: 2, boneWidth: 2, showJoints: false } },
+    { name: "Mocap HUD", params: { colorScheme: "thermal", jointRadius: 5, boneWidth: 3, showJoints: true, showConfidence: true } },
+    { name: "Ghost rig", params: { colorScheme: "accent", jointRadius: 3, boneWidth: 2, showJoints: true }, opacity: 0.6, blend: "screen" },
+  ],
+  cutout: [
+    { name: "Clean cutout", params: { output: "transparent", matteThreshold: 0.5, feather: 2 } },
+    { name: "Studio white", params: { output: "solid", bgColor: "#f4f2ec", matteThreshold: 0.5, feather: 2 } },
+    { name: "Green screen", params: { output: "solid", bgColor: "#00b140", matteThreshold: 0.5, feather: 1 } },
+    { name: "Spotlight", params: { output: "spotlight", bgBlur: 10, bgDim: 0.6, matteThreshold: 0.5, feather: 3 } },
+  ],
+  depth3d: [
+    { name: "Depth fog", params: { style: "fog", strength: 0.7, fogTone: "#0b1e3a" } },
+    { name: "Parallax pop", params: { style: "parallax", strength: 0.6, background: "#0b0c0e" } },
+    { name: "Anaglyph 3D", params: { style: "anaglyph", strength: 0.6 } },
+    { name: "Point cloud", params: { style: "pointcloud", strength: 0.8, dotSize: 2, background: "#060709" } },
+  ],
 };
 
 /** True when the layer's current settings match this preset exactly. */
