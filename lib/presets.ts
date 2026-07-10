@@ -95,6 +95,18 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Manifesto", params: { source: "vocab", columns: 24, toneMode: "weight", paper: "dark", dissolve: 0.3, highlight: "#f0a868", invert: true } },
     { name: "Whisper", params: { source: "lorem", columns: 34, toneMode: "opacity", paper: "transparent", dissolve: 0.7 }, opacity: 0.7, blend: "screen" },
   ],
+  slitscan: [
+    { name: "Time smear", params: { axis: "rows", bandHeight: 2, curve: "linear", direction: "forward" } },
+    { name: "Melt", params: { axis: "rows", bandHeight: 4, curve: "wave", direction: "forward" } },
+    { name: "Wave curtain", params: { axis: "cols", bandHeight: 3, curve: "wave", direction: "forward" } },
+    { name: "Frozen echo", params: { axis: "rows", bandHeight: 2, curve: "centerOut", direction: "forward", freeze: true } },
+  ],
+  trails: [
+    { name: "Light trails", params: { persistence: 0.88, mode: "lighten", smearPx: 0, diffHighlight: false } },
+    { name: "Datamosh smear", params: { persistence: 0.8, mode: "screen", smearPx: 6, diffHighlight: false } },
+    { name: "Ghost dissolve", params: { persistence: 0.75, mode: "onion", smearPx: 0, diffHighlight: false } },
+    { name: "Motion scanner", params: { persistence: 0.6, mode: "lighten", smearPx: 0, diffHighlight: true, tint: "#ff2a6d" } },
+  ],
 };
 
 /** True when the layer's current settings match this preset exactly. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isPixelMode, runPixelChain, type Stage } from "@/lib/modes";
+import { isPixelMode, isTemporalMode, runVideoChain, type Stage } from "@/lib/modes";
 import { downloadBlob, drawImageData, resizeImageData } from "@/lib/image";
 
 // ponytail: cap the working frame to 640px on its longest side and record at
@@ -9,6 +9,7 @@ import { downloadBlob, drawImageData, resizeImageData } from "@/lib/image";
 const MAX_SIDE = 640;
 const FPS = 25;
 const MAX_SECONDS = 10; // spec: short sub-10s clips
+const HISTORY_MAX = 48; // frames kept for temporal effects (slit-scan / trails)
 
 export type VideoMeta = { width: number; height: number; duration: number };
 
@@ -37,13 +38,19 @@ export function VideoStage({
   const stagesRef = useRef(stages);
   stagesRef.current = stages;
 
+  // Temporal state: a ring buffer of recent input frames + per-stage feedback.
+  const historyRef = useRef<ImageData[]>([]);
+  const prevOutRef = useRef<Map<string, ImageData>>(new Map());
+  const frameIndexRef = useRef(0);
+
   const [playing, setPlaying] = useState(false);
   const [recording, setRecording] = useState(false);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
   const recordable = pickMime() !== "";
 
-  const hasModelStage = stages.some((s) => !isPixelMode(s.mode));
+  // Only true model stages are skipped on video; temporal stages run live.
+  const hasModelStage = stages.some((s) => !isPixelMode(s.mode) && !isTemporalMode(s.mode));
   const lastPixel = [...stages].reverse().find((s) => isPixelMode(s.mode))?.mode;
   const pixelated = lastPixel === "ascii" || lastPixel === "halftone";
 
@@ -57,9 +64,32 @@ export function VideoStage({
     if (!octx) return;
     octx.drawImage(v, 0, 0, off.width, off.height);
     const src = octx.getImageData(0, 0, off.width, off.height);
-    const { imageData } = runPixelChain(src, stagesRef.current);
+    const hist = historyRef.current;
+    hist.push(src);
+    if (hist.length > HISTORY_MAX) hist.shift();
+    frameIndexRef.current += 1;
+    const { imageData } = runVideoChain(src, stagesRef.current, {
+      history: hist,
+      prevOut: prevOutRef.current,
+      frameIndex: frameIndexRef.current,
+    });
     drawImageData(c, imageData);
   }, []);
+
+  // Reset temporal buffers when the clip changes.
+  useEffect(() => {
+    historyRef.current = [];
+    prevOutRef.current.clear();
+    frameIndexRef.current = 0;
+  }, [url]);
+
+  // Drop feedback for stages that no longer exist.
+  useEffect(() => {
+    const ids = new Set(stages.map((s) => s.id));
+    for (const k of [...prevOutRef.current.keys()]) {
+      if (!ids.has(k)) prevOutRef.current.delete(k);
+    }
+  }, [stages]);
 
   const onLoadedMeta = useCallback(() => {
     const v = videoRef.current;

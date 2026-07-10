@@ -1,7 +1,13 @@
 // Runs a stack of effect stages. Every mode is a full-frame producer:
 // pixel effects are synchronous; YOLO (boxes baked in) and Depth are async.
 
-import { isPixelMode, runPixelEffect, type Stage } from "./modes";
+import {
+  isPixelMode,
+  isTemporalMode,
+  runPixelEffect,
+  runTemporalEffect,
+  type Stage,
+} from "./modes";
 import { detectAndBake } from "./effects/yolo";
 import { estimateDepth } from "./effects/depth";
 import { blendImageData } from "./image";
@@ -19,6 +25,13 @@ export async function produceStage(stage: Stage, source: ImageData): Promise<Eff
     r = { imageData: await estimateDepth(source, stage.params as unknown as DepthParams) };
   } else if (isPixelMode(stage.mode)) {
     r = runPixelEffect(stage.mode, source, stage.params);
+  } else if (isTemporalMode(stage.mode)) {
+    // Still path: no history/feedback → temporal effects degrade to identity.
+    r = runTemporalEffect(stage.mode, source, stage.params, {
+      history: [source],
+      prevOutput: null,
+      frameIndex: 0,
+    });
   } else {
     return { imageData: source };
   }

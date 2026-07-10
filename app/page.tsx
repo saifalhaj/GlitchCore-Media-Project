@@ -12,12 +12,19 @@ import {
   MODE_ORDER,
   DEFAULT_PARAMS,
   runPixelEffect,
+  isPixelMode,
   PIXEL_MODES,
   type PixelMode,
 } from "@/lib/modes";
 import { decodeToImageData, drawImageData, resizeImageData } from "@/lib/image";
 import { turbo } from "@/lib/colormap";
 import type { ModeId } from "@/lib/effects/types";
+
+// Modes that render a static preview (temporal/model modes are excluded — they
+// need video, or would just show the source here).
+const SHOWCASE_MODES: ModeId[] = MODE_ORDER.filter(
+  (m) => isPixelMode(m) || m === "yolo" || m === "depth",
+);
 
 const HERO_TICK_MS = 2600;
 const PROOF_TICK_MS = 4000;
@@ -80,7 +87,8 @@ function fakeDepth(src: ImageData): ImageData {
 function renderMode(mode: ModeId, src: ImageData): ImageData {
   if (mode === "yolo") return fakeYolo(src);
   if (mode === "depth") return fakeDepth(src);
-  return runPixelEffect(mode, src, DEFAULT_PARAMS[mode]).imageData;
+  if (isPixelMode(mode)) return runPixelEffect(mode, src, DEFAULT_PARAMS[mode]).imageData;
+  return src; // temporal/model modes have no static preview
 }
 
 /* ---- Hooks ---- */
@@ -114,7 +122,7 @@ export default function LandingPage() {
       const small = resizeImageData(src, 360);
       const frames = {} as Record<ModeId, ImageData>;
       const thumbs = {} as Record<ModeId, ImageData>;
-      for (const m of MODE_ORDER) {
+      for (const m of SHOWCASE_MODES) {
         frames[m] = renderMode(m, src);
         thumbs[m] = renderMode(m, small);
       }
@@ -149,13 +157,13 @@ export default function LandingPage() {
 
   /* ---- Hero: auto-cycle all six modes ---- */
   const [heroIdx, setHeroIdx] = useState(0);
-  const heroMode: ModeId = MODE_ORDER[heroIdx];
+  const heroMode: ModeId = SHOWCASE_MODES[heroIdx];
   const heroCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     if (reduced || !ready) return;
     const id = setInterval(
-      () => setHeroIdx((i) => (i + 1) % MODE_ORDER.length),
+      () => setHeroIdx((i) => (i + 1) % SHOWCASE_MODES.length),
       HERO_TICK_MS,
     );
     return () => clearInterval(id);
@@ -333,7 +341,7 @@ export default function LandingPage() {
               {MODES[heroMode].name}
             </span>
             <span className="text-text-muted">
-              {String(heroIdx + 1).padStart(2, "0")}/06
+              {String(heroIdx + 1).padStart(2, "0")}/{String(SHOWCASE_MODES.length).padStart(2, "0")}
             </span>
           </div>
         </div>
@@ -445,7 +453,7 @@ export default function LandingPage() {
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MODE_ORDER.map((m, i) => (
+          {SHOWCASE_MODES.map((m, i) => (
             /* Stagger lives on the reveal wrapper so it never delays the
                card's own hover lift/glow transitions. */
             <div key={m} className="reveal" style={{ transitionDelay: `${i * 60}ms` }}>

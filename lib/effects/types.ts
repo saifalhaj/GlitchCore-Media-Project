@@ -16,7 +16,9 @@ export type ModeId =
   | "crt"
   | "contour"
   | "lowpoly"
-  | "words";
+  | "words"
+  | "slitscan"
+  | "trails";
 
 /** Output of a pixel effect. `text` is only set by ASCII (the raw character grid,
  *  retained for "Copy as text" — the canvas is a rasterization of it). */
@@ -26,6 +28,21 @@ export type EffectResult = {
 };
 
 export type PixelEffectFn<P> = (source: ImageData, params: P) => EffectResult;
+
+/** Temporal effects need recent frames. `history` is oldest→newest raw input
+ *  frames (last entry = current); `prevOutput` is this layer's own last output
+ *  (feedback). On the still path history has one entry and prevOutput is null,
+ *  so temporal effects degrade to identity. */
+export type FrameContext = {
+  history: ImageData[];
+  prevOutput: ImageData | null;
+  frameIndex: number;
+};
+export type TemporalPixelFn<P> = (
+  source: ImageData,
+  params: P,
+  ctx: FrameContext,
+) => EffectResult;
 
 // ---- Per-mode parameter shapes (defaults live in ../modes.ts) ----
 
@@ -159,6 +176,22 @@ export type WordsParams = {
   paper: "cream" | "white" | "dark" | "transparent";
   invert: boolean;
   seed: number;
+};
+
+export type SlitScanParams = {
+  axis: "rows" | "cols"; // scan across rows (each row = a moment) or columns
+  bandHeight: number; // px per time band
+  curve: "linear" | "wave" | "centerOut"; // how band index maps to time
+  direction: "forward" | "reverse";
+  freeze: boolean; // hold the time mapping (stops advancing)
+};
+
+export type TrailsParams = {
+  persistence: number; // 0–1, how much of the previous frame survives
+  mode: "lighten" | "screen" | "onion"; // how the trail composites
+  smearPx: number; // directional smear of the feedback each frame
+  diffHighlight: boolean; // highlight moving pixels
+  tint: string; // #rrggbb for the motion highlight
 };
 
 /** A single YOLO detection in source-image pixel coordinates (top-left origin). */

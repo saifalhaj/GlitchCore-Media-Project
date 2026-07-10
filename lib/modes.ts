@@ -10,6 +10,8 @@ import { crt } from "./effects/crt";
 import { contour } from "./effects/contour";
 import { lowpoly } from "./effects/lowpoly";
 import { words } from "./effects/words";
+import { slitscan } from "./effects/slitscan";
+import { trails } from "./effects/trails";
 import { blendImageData, type BlendMode } from "./image";
 import type {
   EffectResult,
@@ -26,6 +28,9 @@ import type {
   ContourParams,
   LowPolyParams,
   WordsParams,
+  SlitScanParams,
+  TrailsParams,
+  FrameContext,
 } from "./effects/types";
 
 // UI control descriptors — ParamPanel renders these generically per active mode.
@@ -78,6 +83,8 @@ export const MODE_ORDER: ModeId[] = [
   "contour",
   "lowpoly",
   "words",
+  "slitscan",
+  "trails",
 ];
 
 export const MODES: Record<ModeId, ModeDef> = {
@@ -539,12 +546,76 @@ export const MODES: Record<ModeId, ModeDef> = {
       seed: 1337,
     },
   },
+
+  slitscan: {
+    id: "slitscan",
+    name: "Slit-scan",
+    tagline: "Every row is a different moment — motion smears across time. Video only.",
+    color: "var(--mode-slitscan)",
+    controls: [
+      {
+        kind: "select",
+        key: "axis",
+        label: "Axis",
+        options: [
+          { value: "rows", label: "Rows" },
+          { value: "cols", label: "Columns" },
+        ],
+      },
+      { kind: "slider", key: "bandHeight", label: "Band", min: 1, max: 40, step: 1, unit: "px" },
+      {
+        kind: "select",
+        key: "curve",
+        label: "Curve",
+        options: [
+          { value: "linear", label: "Linear" },
+          { value: "wave", label: "Wave" },
+          { value: "centerOut", label: "Center-out" },
+        ],
+      },
+      {
+        kind: "select",
+        key: "direction",
+        label: "Direction",
+        options: [
+          { value: "forward", label: "Forward" },
+          { value: "reverse", label: "Reverse" },
+        ],
+      },
+      { kind: "toggle", key: "freeze", label: "Freeze" },
+    ],
+    defaults: { axis: "rows", bandHeight: 2, curve: "linear", direction: "forward", freeze: false },
+  },
+
+  trails: {
+    id: "trails",
+    name: "Trails",
+    tagline: "Feedback echo and datamosh smear — each frame decays into the next. Video only.",
+    color: "var(--mode-trails)",
+    controls: [
+      { kind: "slider", key: "persistence", label: "Persistence", min: 0, max: 1, step: 0.01 },
+      {
+        kind: "select",
+        key: "mode",
+        label: "Trail blend",
+        options: [
+          { value: "lighten", label: "Lighten" },
+          { value: "screen", label: "Screen" },
+          { value: "onion", label: "Onion-skin" },
+        ],
+      },
+      { kind: "slider", key: "smearPx", label: "Smear", min: 0, max: 20, step: 1, unit: "px" },
+      { kind: "toggle", key: "diffHighlight", label: "Motion highlight" },
+      { kind: "color", key: "tint", label: "Motion tint" },
+    ],
+    defaults: { persistence: 0.85, mode: "lighten", smearPx: 0, diffHighlight: false, tint: "#ff2a6d" },
+  },
 };
 
-/** Dispatch a synchronous pixel effect. YOLO (detection) and Depth (async model
- *  inference) are handled specially in components/CanvasStage.tsx. */
+/** Dispatch a synchronous, stateless pixel effect. Model modes (yolo/depth) and
+ *  temporal modes (slitscan/trails) are handled elsewhere. */
 export function runPixelEffect(
-  mode: Exclude<ModeId, "yolo" | "depth">,
+  mode: PixelMode,
   source: ImageData,
   params: Params,
 ): EffectResult {
@@ -607,6 +678,28 @@ export function isPixelMode(m: ModeId): m is PixelMode {
   return (PIXEL_MODES as string[]).includes(m);
 }
 
+export type TemporalMode = "slitscan" | "trails";
+export const TEMPORAL_MODES: TemporalMode[] = ["slitscan", "trails"];
+export function isTemporalMode(m: ModeId): m is TemporalMode {
+  return (TEMPORAL_MODES as string[]).includes(m);
+}
+
+/** Dispatch a temporal effect (needs a FrameContext). Degrades to identity when
+ *  history is empty / prevOutput is null (the still path). */
+export function runTemporalEffect(
+  mode: TemporalMode,
+  source: ImageData,
+  params: Params,
+  ctx: FrameContext,
+): EffectResult {
+  switch (mode) {
+    case "slitscan":
+      return slitscan(source, params as unknown as SlitScanParams, ctx);
+    case "trails":
+      return trails(source, params as unknown as TrailsParams, ctx);
+  }
+}
+
 /** One layer of the effect stack. `opacity` and `blend` are layer-level (not
  *  effect params): opacity 1 + normal = the effect replaces the frame; lower
  *  opacity or multiply/screen composite it over the layer's input. */
@@ -628,17 +721,38 @@ export function makeStage(mode: ModeId): Stage {
   };
 }
 
-/** Run only the synchronous pixel stages of a chain — used for live video, where
- *  per-frame model inference (YOLO/Depth) would be far too slow. Model stages
- *  pass through unchanged. */
-export function runPixelChain(source: ImageData, stages: Stage[]): EffectResult {
+/** Per-frame chain for live video. Pixel stages run stateless; temporal stages
+ *  get a FrameContext (shared input history + their own feedback via prevOut);
+ *  model stages (YOLO/Depth) are skipped — far too slow per frame. */
+export type VideoContext = {
+  history: ImageData[]; // oldest→newest raw input frames
+  prevOut: Map<string, ImageData>; // per-stage-id last output (feedback)
+  frameIndex: number;
+};
+
+export function runVideoChain(
+  source: ImageData,
+  stages: Stage[],
+  vctx: VideoContext,
+): EffectResult {
   let acc = source;
   let text: string | undefined;
   for (const s of stages) {
-    if (!isPixelMode(s.mode)) continue;
-    const r = runPixelEffect(s.mode, acc, s.params);
+    let r: EffectResult;
+    if (isPixelMode(s.mode)) {
+      r = runPixelEffect(s.mode, acc, s.params);
+    } else if (isTemporalMode(s.mode)) {
+      r = runTemporalEffect(s.mode, acc, s.params, {
+        history: vctx.history,
+        prevOutput: vctx.prevOut.get(s.id) ?? null,
+        frameIndex: vctx.frameIndex,
+      });
+      vctx.prevOut.set(s.id, r.imageData); // feedback for next frame
+    } else {
+      continue; // model stage — skipped on video
+    }
     acc = blendImageData(r.imageData, acc, s.opacity ?? 1, s.blend ?? "normal");
-    if (s.mode === "ascii") text = r.text;
+    if (s.mode === "ascii" || s.mode === "words") text = r.text;
   }
   return { imageData: acc, text };
 }
@@ -658,4 +772,6 @@ export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   contour: { ...MODES.contour.defaults },
   lowpoly: { ...MODES.lowpoly.defaults },
   words: { ...MODES.words.defaults },
+  slitscan: { ...MODES.slitscan.defaults },
+  trails: { ...MODES.trails.defaults },
 };

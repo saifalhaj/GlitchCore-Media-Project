@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { DEFAULT_PARAMS, MODE_ORDER, MODES, runPixelEffect } from "@/lib/modes";
+import { DEFAULT_PARAMS, MODE_ORDER, MODES, isPixelMode, runPixelEffect } from "@/lib/modes";
 import type { ModeId } from "@/lib/effects/types";
 import { drawImageData } from "@/lib/image";
 import { turbo } from "@/lib/colormap";
@@ -33,9 +33,12 @@ export function ModeRail({
           drawYoloPreview(canvas, sample);
         } else if (id === "depth") {
           drawDepthPreview(canvas, sample);
-        } else {
+        } else if (isPixelMode(id)) {
           const { imageData } = runPixelEffect(id, sample, DEFAULT_PARAMS[id]);
           drawImageData(canvas, imageData);
+        } else {
+          // Temporal / model modes: no still preview → show the source frame.
+          drawImageData(canvas, sample);
         }
       } catch {
         // A thumbnail failing shouldn't break the rail — leave it blank.
