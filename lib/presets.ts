@@ -71,6 +71,24 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Dot grid", params: { blockSize: 12, shape: "circle" } },
     { name: "Chunky hex", params: { blockSize: 20, shape: "hex" } },
   ],
+  crt: [
+    { name: "Broadcast VHS", params: { maskType: "apertureGrille", maskDepth: 0.5, chromaBleed: 0.5, scanlineIntensity: 0.4, barrel: 0.2, vignette: 0.4, noise: 0.12, tracking: 0.2 } },
+    { name: "Trinitron PVM", params: { maskType: "apertureGrille", maskDepth: 0.7, chromaBleed: 0.2, scanlineIntensity: 0.5, barrel: 0.1, vignette: 0.3, noise: 0.03, tracking: 0.02 } },
+    { name: "Dead channel", params: { maskType: "shadowMask", maskDepth: 0.4, chromaBleed: 0.7, scanlineIntensity: 0.3, barrel: 0.35, vignette: 0.6, noise: 0.45, rollSpeed: 0.3, tracking: 0.5 } },
+    { name: "Camcorder '92", params: { maskType: "none", maskDepth: 0.2, chromaBleed: 0.35, scanlineIntensity: 0.25, barrel: 0.15, vignette: 0.35, noise: 0.18, tracking: 0.12 } },
+  ],
+  contour: [
+    { name: "Topo map", params: { levels: 8, palette: "terrain", fill: "banded", smoothing: 1 } },
+    { name: "Contour lines", params: { levels: 12, palette: "mono", fill: "none", smoothing: 1 }, opacity: 0.8, blend: "multiply" },
+    { name: "Elevation heat", params: { levels: 10, palette: "turbo", fill: "banded", smoothing: 1 } },
+    { name: "Blueprint", params: { levels: 8, palette: "ink", fill: "none", invert: true, smoothing: 1 } },
+  ],
+  lowpoly: [
+    { name: "Crystal", params: { density: 18, cellShape: "triangle", colorSampling: "average", outline: 0 } },
+    { name: "Facet + wire", params: { density: 16, cellShape: "triangle", colorSampling: "centroid", outline: 1 } },
+    { name: "Voronoi shards", params: { density: 22, cellShape: "voronoi", colorSampling: "average", outline: 0 } },
+    { name: "Stained glass", params: { density: 14, cellShape: "voronoi", colorSampling: "average", outline: 2 } },
+  ],
 };
 
 /** True when the layer's current settings match this preset exactly. */

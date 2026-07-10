@@ -12,7 +12,10 @@ export type ModeId =
   | "vision"
   | "falsecolor"
   | "mirror"
-  | "pixelate";
+  | "pixelate"
+  | "crt"
+  | "contour"
+  | "lowpoly";
 
 /** Output of a pixel effect. `text` is only set by ASCII (the raw character grid,
  *  retained for "Copy as text" — the canvas is a rasterization of it). */
@@ -110,6 +113,38 @@ export type PixelateParams = {
   shape: "square" | "hex" | "circle";
   smooth: boolean; // average (true) vs nearest (false) sampling
   outline: boolean; // draw grid lines between blocks
+};
+
+export type CrtParams = {
+  maskType: "none" | "apertureGrille" | "shadowMask";
+  maskDepth: number; // 0–1 strength of the phosphor mask
+  chromaBleed: number; // 0–1 horizontal chroma smear
+  scanlineIntensity: number; // 0–1
+  barrel: number; // 0–1 curved-glass distortion
+  vignette: number; // 0–1
+  noise: number; // 0–1 snow
+  rollSpeed: number; // vertical roll amount (0 = still)
+  tracking: number; // 0–1 tracking-tear amount
+  seed: number;
+};
+
+export type ContourParams = {
+  levels: number; // elevation bands
+  smoothing: number; // pre-blur radius (stops video shimmer)
+  lineWidth: number; // px
+  fill: "none" | "banded" | "source";
+  palette: "mono" | "turbo" | "ink" | "terrain";
+  invert: boolean;
+};
+
+export type LowPolyParams = {
+  density: number; // feature-point grid density
+  jitter: number; // 0–1 point randomness
+  edgeBias: number; // 0–1 bias points toward edges
+  cellShape: "triangle" | "voronoi";
+  colorSampling: "average" | "centroid";
+  outline: number; // 0–2 wireframe width
+  seed: number;
 };
 
 /** A single YOLO detection in source-image pixel coordinates (top-left origin). */

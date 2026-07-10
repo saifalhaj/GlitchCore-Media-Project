@@ -6,6 +6,9 @@ import { vision } from "./effects/vision";
 import { falsecolor } from "./effects/falsecolor";
 import { mirror } from "./effects/mirror";
 import { pixelate } from "./effects/pixelate";
+import { crt } from "./effects/crt";
+import { contour } from "./effects/contour";
+import { lowpoly } from "./effects/lowpoly";
 import { blendImageData, type BlendMode } from "./image";
 import type {
   EffectResult,
@@ -18,6 +21,9 @@ import type {
   FalseColorParams,
   MirrorParams,
   PixelateParams,
+  CrtParams,
+  ContourParams,
+  LowPolyParams,
 } from "./effects/types";
 
 // UI control descriptors — ParamPanel renders these generically per active mode.
@@ -65,6 +71,9 @@ export const MODE_ORDER: ModeId[] = [
   "depth",
   "mirror",
   "pixelate",
+  "crt",
+  "contour",
+  "lowpoly",
 ];
 
 export const MODES: Record<ModeId, ModeDef> = {
@@ -345,6 +354,129 @@ export const MODES: Record<ModeId, ModeDef> = {
     ],
     defaults: { blockSize: 12, shape: "square", smooth: false, outline: false },
   },
+
+  crt: {
+    id: "crt",
+    name: "CRT / VHS",
+    tagline: "Analog TV death: phosphor mask, chroma bleed, curved glass, rolling tracking error, snow.",
+    color: "var(--mode-crt)",
+    controls: [
+      {
+        kind: "select",
+        key: "maskType",
+        label: "Phosphor mask",
+        options: [
+          { value: "none", label: "None" },
+          { value: "apertureGrille", label: "Aperture grille" },
+          { value: "shadowMask", label: "Shadow mask" },
+        ],
+      },
+      { kind: "slider", key: "maskDepth", label: "Mask depth", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "chromaBleed", label: "Chroma bleed", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "scanlineIntensity", label: "Scanlines", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "barrel", label: "Barrel", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "vignette", label: "Vignette", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "noise", label: "Snow", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "rollSpeed", label: "Roll", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "tracking", label: "Tracking", min: 0, max: 1, step: 0.01 },
+      { kind: "seed", key: "seed", label: "Seed" },
+    ],
+    defaults: {
+      maskType: "apertureGrille",
+      maskDepth: 0.5,
+      chromaBleed: 0.4,
+      scanlineIntensity: 0.35,
+      barrel: 0.25,
+      vignette: 0.4,
+      noise: 0.08,
+      rollSpeed: 0,
+      tracking: 0.1,
+      seed: 1337,
+    },
+  },
+
+  contour: {
+    id: "contour",
+    name: "Contour",
+    tagline: "Luminance quantized into elevation bands, boundaries traced as iso-lines.",
+    color: "var(--mode-contour)",
+    controls: [
+      { kind: "slider", key: "levels", label: "Bands", min: 2, max: 24, step: 1 },
+      { kind: "slider", key: "smoothing", label: "Smoothing", min: 0, max: 4, step: 1, unit: "px" },
+      { kind: "slider", key: "lineWidth", label: "Line width", min: 1, max: 4, step: 1, unit: "px" },
+      {
+        kind: "select",
+        key: "fill",
+        label: "Fill",
+        options: [
+          { value: "none", label: "Lines only" },
+          { value: "banded", label: "Banded" },
+          { value: "source", label: "Over source" },
+        ],
+      },
+      {
+        kind: "select",
+        key: "palette",
+        label: "Palette",
+        options: [
+          { value: "mono", label: "Mono" },
+          { value: "turbo", label: "Turbo" },
+          { value: "ink", label: "Ink" },
+          { value: "terrain", label: "Terrain" },
+        ],
+      },
+      { kind: "toggle", key: "invert", label: "Invert" },
+    ],
+    defaults: {
+      levels: 8,
+      smoothing: 1,
+      lineWidth: 1,
+      fill: "banded",
+      palette: "terrain",
+      invert: false,
+    },
+  },
+
+  lowpoly: {
+    id: "lowpoly",
+    name: "Low-poly",
+    tagline: "Shatters the image into flat-shaded triangles or Voronoi cells snapped to its own edges.",
+    color: "var(--mode-lowpoly)",
+    controls: [
+      { kind: "slider", key: "density", label: "Density", min: 6, max: 60, step: 1 },
+      { kind: "slider", key: "jitter", label: "Jitter", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "edgeBias", label: "Edge bias", min: 0, max: 1, step: 0.01 },
+      {
+        kind: "select",
+        key: "cellShape",
+        label: "Cells",
+        options: [
+          { value: "triangle", label: "Triangles" },
+          { value: "voronoi", label: "Voronoi" },
+        ],
+      },
+      {
+        kind: "select",
+        key: "colorSampling",
+        label: "Color",
+        options: [
+          { value: "average", label: "Average" },
+          { value: "centroid", label: "Centroid" },
+        ],
+      },
+      { kind: "slider", key: "outline", label: "Wireframe", min: 0, max: 2, step: 1, unit: "px" },
+      { kind: "seed", key: "seed", label: "Seed" },
+    ],
+    defaults: {
+      density: 18,
+      jitter: 0.7,
+      edgeBias: 0.6,
+      cellShape: "triangle",
+      colorSampling: "average",
+      outline: 0,
+      seed: 1337,
+    },
+  },
 };
 
 /** Dispatch a synchronous pixel effect. YOLO (detection) and Depth (async model
@@ -371,6 +503,12 @@ export function runPixelEffect(
       return mirror(source, params as unknown as MirrorParams);
     case "pixelate":
       return pixelate(source, params as unknown as PixelateParams);
+    case "crt":
+      return crt(source, params as unknown as CrtParams);
+    case "contour":
+      return contour(source, params as unknown as ContourParams);
+    case "lowpoly":
+      return lowpoly(source, params as unknown as LowPolyParams);
   }
 }
 
@@ -382,7 +520,10 @@ export type PixelMode =
   | "vision"
   | "falsecolor"
   | "mirror"
-  | "pixelate";
+  | "pixelate"
+  | "crt"
+  | "contour"
+  | "lowpoly";
 export const PIXEL_MODES: PixelMode[] = [
   "ascii",
   "glitch",
@@ -392,6 +533,9 @@ export const PIXEL_MODES: PixelMode[] = [
   "falsecolor",
   "mirror",
   "pixelate",
+  "crt",
+  "contour",
+  "lowpoly",
 ];
 export function isPixelMode(m: ModeId): m is PixelMode {
   return (PIXEL_MODES as string[]).includes(m);
@@ -444,4 +588,7 @@ export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   falsecolor: { ...MODES.falsecolor.defaults },
   mirror: { ...MODES.mirror.defaults },
   pixelate: { ...MODES.pixelate.defaults },
+  crt: { ...MODES.crt.defaults },
+  contour: { ...MODES.contour.defaults },
+  lowpoly: { ...MODES.lowpoly.defaults },
 };
