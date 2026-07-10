@@ -4,11 +4,11 @@ import {
   luminance,
   blankLike,
 } from "./types";
+import { hexToRgb } from "../color";
+import { buildCoverage } from "../mask";
 
 type RGB = [number, number, number];
 
-const INK: RGB = [0x14, 0x17, 0x1c]; // "#14171c"
-const PAPER: RGB = [0xed, 0xeb, 0xe3]; // "#edebe3"
 const SHADOW: RGB = [0x1b, 0x2a, 0x4a]; // "#1b2a4a"
 const HIGHLIGHT: RGB = [0x3e, 0x6f, 0xd9]; // "#3e6fd9"
 
@@ -68,8 +68,10 @@ export function halftone(source: ImageData, params: HalftoneParams): EffectResul
     }
   }
 
-  const paperColor: RGB = duotone ? HIGHLIGHT : PAPER;
-  const inkColor: RGB = duotone ? SHADOW : INK;
+  // Mono uses the user's ink/paper (defaults reproduce the original colors);
+  // duotone keeps its fixed shadow/highlight pair.
+  const paperColor: RGB = duotone ? HIGHLIGHT : hexToRgb(params.paperColor);
+  const inkColor: RGB = duotone ? SHADOW : hexToRgb(params.inkColor);
 
   const fillBlock = (bx: number, by: number, c: RGB) => {
     const x0 = bx * cell;
@@ -168,6 +170,31 @@ export function halftone(source: ImageData, params: HalftoneParams): EffectResul
             }
           }
         }
+      }
+    }
+  }
+
+  // Editorial dissolve: fade ink toward paper (or drop paper to transparent)
+  // by a coverage field. Off by default so existing output is unchanged.
+  const dissolve = params.dissolve ?? 0;
+  if (dissolve > 0) {
+    const cov = buildCoverage(source, {
+      source: params.dissolveSource ?? "radial",
+      amount: dissolve,
+      falloff: 1.6,
+    });
+    const [pr, pg, pb] = paperColor;
+    for (let i = 0; i < cov.length; i++) {
+      const c = cov[i];
+      const p = i * 4;
+      if (params.paperTransparent) {
+        const isPaper =
+          Math.abs(dst[p] - pr) < 10 && Math.abs(dst[p + 1] - pg) < 10 && Math.abs(dst[p + 2] - pb) < 10;
+        dst[p + 3] = isPaper ? 0 : Math.round(c * 255);
+      } else {
+        dst[p] = Math.round(pr + (dst[p] - pr) * c);
+        dst[p + 1] = Math.round(pg + (dst[p + 1] - pg) * c);
+        dst[p + 2] = Math.round(pb + (dst[p + 2] - pb) * c);
       }
     }
   }

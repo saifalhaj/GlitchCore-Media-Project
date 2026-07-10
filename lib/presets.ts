@@ -19,6 +19,7 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Dense type", params: { columns: 180, ramp: "detailed", colorMode: "mono", invert: false } },
     { name: "Color type", params: { columns: 110, ramp: "standard", colorMode: "sampled", invert: false } },
     { name: "Ghost text", params: { columns: 130, ramp: "minimal", colorMode: "mono", invert: false }, opacity: 0.55 },
+    { name: "Newsprint", params: { columns: 120, ramp: "standard", colorMode: "mono", inkColor: "#14171c", paperColor: "#efe9dc" } },
   ],
   glitch: [
     { name: "Subtle", params: { rgbShiftPx: 3, scanlineOpacity: 0.08, pixelSortThreshold: 0.85, blockCorruptAmount: 0.05, seed: 1337 } },
@@ -35,6 +36,7 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Comic", params: { algorithm: "bayer4x4", cellSize: 4, threshold: 128, colorMode: "duotone" } },
     { name: "Diffusion", params: { algorithm: "floydSteinberg", cellSize: 3, threshold: 128, colorMode: "mono" } },
     { name: "Print wash", params: { algorithm: "dotHalftone", cellSize: 9, threshold: 128, colorMode: "duotone" }, opacity: 0.65, blend: "multiply" },
+    { name: "Editorial ink", params: { algorithm: "dotHalftone", cellSize: 7, colorMode: "mono", inkColor: "#b0392b", paperColor: "#efe9dc", dissolve: 0.35, dissolveSource: "radial" } },
   ],
   edges: [
     { name: "Line art", params: { threshold: 80, invert: false } },

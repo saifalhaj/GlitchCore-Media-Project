@@ -25,10 +25,10 @@ still-only, skipped on video).
 
 | Mode | What it does |
 |------|--------------|
-| **ASCII** | Luminance mapped to a character ramp on a sampled grid; mono/sampled color, ramps, invert. Keeps the text for copy-as-text. |
+| **ASCII** | Luminance mapped to a character ramp on a sampled grid; mono/sampled color, ramps, invert, custom ink/paper (or transparent paper). Keeps the text for copy-as-text. |
 | **Glitchcore** | Stacked datamosh: RGB shift, pixel sort (Kim Asendorf), block corruption, scanlines. Seeded. |
 | **Vision** | A *fake* real-time detection HUD — boxes, tracked IDs, hub-and-spoke connectors, cyan accents. Procedural, so it runs live on video where real YOLO can't. Editable colors. |
-| **Halftone** | Bayer 4×4 / 8×8 ordered dither, Floyd–Steinberg, true dot halftone; mono/duotone. |
+| **Halftone** | Bayer 4×4 / 8×8 ordered dither, Floyd–Steinberg, true dot halftone; mono/duotone, custom single ink, and an editorial **dissolve** (fade toward paper / transparent, from the edges or shadows) via `lib/mask.ts`. |
 | **False-color** | Luminance through a thermal (ironbow/white-hot/medical/turbo) or duotone ramp; gain, bias, isotherm bands. |
 | **Edge Map** | Sobel gradient magnitude → line art; threshold, invert. |
 | **Kaleidoscope** | Mirror & rotational symmetry remap — kaleido, quad, single-axis; segments, angle, center, zoom. |

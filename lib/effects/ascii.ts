@@ -11,6 +11,10 @@ const RAMPS = {
 
 export function ascii(source: ImageData, params: AsciiParams): EffectResult {
   const { columns, ramp, colorMode, invert } = params;
+  // Defaults reproduce the original terminal colors exactly.
+  const paperColor = params.paperColor ?? "#0b0c0e";
+  const inkColor = params.inkColor ?? "#edebe3";
+  const paperTransparent = params.paperTransparent ?? false;
   const sw = source.width;
   const sh = source.height;
   const src = source.data;
@@ -32,8 +36,11 @@ export function ascii(source: ImageData, params: AsciiParams): EffectResult {
   canvas.height = canvasH;
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
 
-  ctx.fillStyle = "#0b0c0e";
-  ctx.fillRect(0, 0, canvasW, canvasH);
+  if (!paperTransparent) {
+    ctx.fillStyle = paperColor;
+    ctx.fillRect(0, 0, canvasW, canvasH); // opaque paper
+  }
+  // transparent paper: leave the canvas cleared so the layer composites over the original.
   ctx.font = `bold ${Math.round(charH * 0.8)}px ui-monospace, monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -80,7 +87,7 @@ export function ascii(source: ImageData, params: AsciiParams): EffectResult {
           sumG / n
         )},${Math.round(sumB / n)})`;
       } else {
-        ctx.fillStyle = "#edebe3";
+        ctx.fillStyle = inkColor;
       }
       ctx.fillText(ch, rx * charW + charW / 2, ry * charH + charH / 2);
     }

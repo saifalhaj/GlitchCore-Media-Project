@@ -118,8 +118,19 @@ export const MODES: Record<ModeId, ModeDef> = {
         ],
       },
       { kind: "toggle", key: "invert", label: "Invert" },
+      { kind: "color", key: "inkColor", label: "Ink" },
+      { kind: "color", key: "paperColor", label: "Paper" },
+      { kind: "toggle", key: "paperTransparent", label: "Transparent paper" },
     ],
-    defaults: { columns: 120, ramp: "standard", colorMode: "mono", invert: false },
+    defaults: {
+      columns: 120,
+      ramp: "standard",
+      colorMode: "mono",
+      invert: false,
+      inkColor: "#edebe3",
+      paperColor: "#0b0c0e",
+      paperTransparent: false,
+    },
   },
 
   glitch: {
@@ -186,8 +197,31 @@ export const MODES: Record<ModeId, ModeDef> = {
           { value: "duotone", label: "Duotone" },
         ],
       },
+      { kind: "color", key: "inkColor", label: "Ink" },
+      { kind: "color", key: "paperColor", label: "Paper" },
+      { kind: "slider", key: "dissolve", label: "Dissolve", min: 0, max: 1, step: 0.01 },
+      {
+        kind: "select",
+        key: "dissolveSource",
+        label: "Dissolve from",
+        options: [
+          { value: "radial", label: "Edges (radial)" },
+          { value: "luminance", label: "Shadows" },
+        ],
+      },
+      { kind: "toggle", key: "paperTransparent", label: "Transparent paper" },
     ],
-    defaults: { algorithm: "bayer8x8", cellSize: 8, threshold: 128, colorMode: "mono" },
+    defaults: {
+      algorithm: "bayer8x8",
+      cellSize: 8,
+      threshold: 128,
+      colorMode: "mono",
+      inkColor: "#14171c",
+      paperColor: "#edebe3",
+      dissolve: 0,
+      dissolveSource: "radial",
+      paperTransparent: false,
+    },
   },
 
   edges: {

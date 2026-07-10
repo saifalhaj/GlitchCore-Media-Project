@@ -54,6 +54,9 @@ export type AsciiParams = {
   ramp: "standard" | "detailed" | "minimal";
   colorMode: "mono" | "sampled";
   invert: boolean;
+  inkColor: string; // #rrggbb (mono glyph color)
+  paperColor: string; // #rrggbb (background)
+  paperTransparent: boolean; // transparent background (composite over original)
 };
 
 export type GlitchParams = {
@@ -76,6 +79,11 @@ export type HalftoneParams = {
   cellSize: number; // px grid resolution for dot/bayer modes
   threshold: number; // 0–255
   colorMode: "mono" | "duotone";
+  inkColor: string; // #rrggbb (mono ink)
+  paperColor: string; // #rrggbb (mono paper)
+  dissolve: number; // 0–1 editorial dissolve toward paper/transparent
+  dissolveSource: "radial" | "luminance"; // where the dissolve concentrates
+  paperTransparent: boolean; // drop paper to transparent (composite over original)
 };
 
 export type EdgeParams = {
