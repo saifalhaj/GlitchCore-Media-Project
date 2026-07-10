@@ -15,7 +15,8 @@ export type ModeId =
   | "pixelate"
   | "crt"
   | "contour"
-  | "lowpoly";
+  | "lowpoly"
+  | "words";
 
 /** Output of a pixel effect. `text` is only set by ASCII (the raw character grid,
  *  retained for "Copy as text" — the canvas is a rasterization of it). */
@@ -144,6 +145,19 @@ export type LowPolyParams = {
   cellShape: "triangle" | "voronoi";
   colorSampling: "average" | "centroid";
   outline: number; // 0–2 wireframe width
+  seed: number;
+};
+
+export type WordsParams = {
+  vocabulary: string; // whitespace/comma-separated words to draw from
+  source: "vocab" | "numbers" | "lorem";
+  columns: number;
+  toneMode: "opacity" | "weight"; // brightness → opacity or font-weight
+  highlight: string; // #rrggbb for the brightest cells
+  highlightThreshold: number; // 0–1
+  dissolve: number; // 0–1, drop cells toward the border → transparent
+  paper: "cream" | "white" | "dark" | "transparent";
+  invert: boolean;
   seed: number;
 };
 

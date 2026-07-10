@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { Control, ModeDef, ParamValue, Params } from "@/lib/modes";
 import type { BlendMode } from "@/lib/image";
 
@@ -107,6 +108,49 @@ export function ParamPanel({
   );
 }
 
+// Debounced text input: the effect chain re-runs on change, so we push updates
+// on a trailing timer (and immediately on blur) rather than per keystroke.
+function TextControl({
+  control,
+  value,
+  onChange,
+}: {
+  control: Extract<Control, { kind: "text" }>;
+  value: string;
+  onChange: (v: ParamValue) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync when the value changes from outside (preset applied, layer switched).
+  useEffect(() => setLocal(value), [value]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const push = (v: string) => {
+    setLocal(v);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => onChange(v.slice(0, control.maxLen ?? 120)), 260);
+  };
+
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs text-[var(--text-muted)]">{control.label}</span>
+      <textarea
+        value={local}
+        placeholder={control.placeholder}
+        maxLength={control.maxLen ?? 120}
+        rows={2}
+        onChange={(e) => push(e.target.value)}
+        onBlur={() => {
+          if (timer.current) clearTimeout(timer.current);
+          onChange(local.slice(0, control.maxLen ?? 120));
+        }}
+        className="w-full resize-none rounded-[var(--radius-sm)] border border-[var(--hairline)] bg-[var(--surface-2)] px-2.5 py-2 font-mono text-xs text-[var(--text)] outline-none focus:border-[var(--accent)]"
+      />
+    </label>
+  );
+}
+
 function ControlRow({
   control,
   value,
@@ -187,6 +231,10 @@ function ControlRow({
         </select>
       </label>
     );
+  }
+
+  if (control.kind === "text") {
+    return <TextControl control={control} value={typeof value === "string" ? value : ""} onChange={onChange} />;
   }
 
   if (control.kind === "color") {

@@ -89,6 +89,12 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Voronoi shards", params: { density: 22, cellShape: "voronoi", colorSampling: "average", outline: 0 } },
     { name: "Stained glass", params: { density: 14, cellShape: "voronoi", colorSampling: "average", outline: 2 } },
   ],
+  words: [
+    { name: "Workspace", params: { source: "vocab", columns: 28, toneMode: "opacity", paper: "cream", dissolve: 0.6, highlight: "#e0603a" } },
+    { name: "Ledger", params: { source: "numbers", columns: 40, toneMode: "opacity", paper: "white", dissolve: 0.4 } },
+    { name: "Manifesto", params: { source: "vocab", columns: 24, toneMode: "weight", paper: "dark", dissolve: 0.3, highlight: "#f0a868", invert: true } },
+    { name: "Whisper", params: { source: "lorem", columns: 34, toneMode: "opacity", paper: "transparent", dissolve: 0.7 }, opacity: 0.7, blend: "screen" },
+  ],
 };
 
 /** True when the layer's current settings match this preset exactly. */

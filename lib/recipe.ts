@@ -81,6 +81,8 @@ function sanitizeParams(id: ModeId, raw: unknown): Params {
       if (typeof v === "string" && cont.options.some((o) => o.value === v)) out[cont.key] = v;
     } else if (cont.kind === "color") {
       out[cont.key] = normalizeHex(v, out[cont.key] as string);
+    } else if (cont.kind === "text") {
+      if (typeof v === "string") out[cont.key] = v.slice(0, cont.maxLen ?? 120);
     } else {
       const n = Number(v);
       if (!Number.isFinite(n)) continue;

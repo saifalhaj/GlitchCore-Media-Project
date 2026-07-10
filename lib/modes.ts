@@ -9,6 +9,7 @@ import { pixelate } from "./effects/pixelate";
 import { crt } from "./effects/crt";
 import { contour } from "./effects/contour";
 import { lowpoly } from "./effects/lowpoly";
+import { words } from "./effects/words";
 import { blendImageData, type BlendMode } from "./image";
 import type {
   EffectResult,
@@ -24,6 +25,7 @@ import type {
   CrtParams,
   ContourParams,
   LowPolyParams,
+  WordsParams,
 } from "./effects/types";
 
 // UI control descriptors — ParamPanel renders these generically per active mode.
@@ -45,7 +47,8 @@ export type Control =
     }
   | { kind: "toggle"; key: string; label: string }
   | { kind: "seed"; key: string; label: string }
-  | { kind: "color"; key: string; label: string };
+  | { kind: "color"; key: string; label: string }
+  | { kind: "text"; key: string; label: string; placeholder?: string; maxLen?: number };
 
 export type ParamValue = number | string | boolean;
 export type Params = Record<string, ParamValue>;
@@ -74,6 +77,7 @@ export const MODE_ORDER: ModeId[] = [
   "crt",
   "contour",
   "lowpoly",
+  "words",
 ];
 
 export const MODES: Record<ModeId, ModeDef> = {
@@ -477,6 +481,64 @@ export const MODES: Record<ModeId, ModeDef> = {
       seed: 1337,
     },
   },
+
+  words: {
+    id: "words",
+    name: "Word raster",
+    tagline: "Semantic ASCII — the image as a grid of whole words, toned by opacity, dissolving at the edges.",
+    color: "var(--mode-words)",
+    controls: [
+      { kind: "text", key: "vocabulary", label: "Words", placeholder: "space or comma separated", maxLen: 200 },
+      {
+        kind: "select",
+        key: "source",
+        label: "Source",
+        options: [
+          { value: "vocab", label: "Your words" },
+          { value: "numbers", label: "Numbers" },
+          { value: "lorem", label: "Lorem" },
+        ],
+      },
+      { kind: "slider", key: "columns", label: "Columns", min: 12, max: 72, step: 1, unit: "w" },
+      {
+        kind: "select",
+        key: "toneMode",
+        label: "Tone",
+        options: [
+          { value: "opacity", label: "Opacity" },
+          { value: "weight", label: "Weight" },
+        ],
+      },
+      { kind: "color", key: "highlight", label: "Highlight" },
+      { kind: "slider", key: "highlightThreshold", label: "Highlight at", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "dissolve", label: "Edge dissolve", min: 0, max: 1, step: 0.01 },
+      {
+        kind: "select",
+        key: "paper",
+        label: "Paper",
+        options: [
+          { value: "cream", label: "Cream" },
+          { value: "white", label: "White" },
+          { value: "dark", label: "Dark" },
+          { value: "transparent", label: "Transparent" },
+        ],
+      },
+      { kind: "toggle", key: "invert", label: "Invert" },
+      { kind: "seed", key: "seed", label: "Seed" },
+    ],
+    defaults: {
+      vocabulary: "workspace memory context model reason token weight signal",
+      source: "vocab",
+      columns: 28,
+      toneMode: "opacity",
+      highlight: "#e0603a",
+      highlightThreshold: 0.72,
+      dissolve: 0.6,
+      paper: "cream",
+      invert: false,
+      seed: 1337,
+    },
+  },
 };
 
 /** Dispatch a synchronous pixel effect. YOLO (detection) and Depth (async model
@@ -509,6 +571,8 @@ export function runPixelEffect(
       return contour(source, params as unknown as ContourParams);
     case "lowpoly":
       return lowpoly(source, params as unknown as LowPolyParams);
+    case "words":
+      return words(source, params as unknown as WordsParams);
   }
 }
 
@@ -523,7 +587,8 @@ export type PixelMode =
   | "pixelate"
   | "crt"
   | "contour"
-  | "lowpoly";
+  | "lowpoly"
+  | "words";
 export const PIXEL_MODES: PixelMode[] = [
   "ascii",
   "glitch",
@@ -536,6 +601,7 @@ export const PIXEL_MODES: PixelMode[] = [
   "crt",
   "contour",
   "lowpoly",
+  "words",
 ];
 export function isPixelMode(m: ModeId): m is PixelMode {
   return (PIXEL_MODES as string[]).includes(m);
@@ -591,4 +657,5 @@ export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   crt: { ...MODES.crt.defaults },
   contour: { ...MODES.contour.defaults },
   lowpoly: { ...MODES.lowpoly.defaults },
+  words: { ...MODES.words.defaults },
 };

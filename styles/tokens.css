@@ -31,6 +31,7 @@
   --mode-crt: #ffb454;        /* CRT phosphor amber */
   --mode-contour: #7ac74f;    /* topographic green */
   --mode-lowpoly: #5ad1e6;    /* faceted crystal aqua */
+  --mode-words: #f0a868;      /* warm editorial ochre */
 
   /* Active accent — reassigned to the active mode's hue at runtime. */
   --accent: var(--mode-ascii);
