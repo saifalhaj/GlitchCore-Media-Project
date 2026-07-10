@@ -189,6 +189,30 @@ function ControlRow({
     );
   }
 
+  if (control.kind === "color") {
+    const hex = typeof value === "string" ? value : "#000000";
+    return (
+      <label className="flex items-center justify-between gap-3">
+        <span className="text-xs text-[var(--text-muted)]">{control.label}</span>
+        <span className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-[var(--text-muted)]">{hex}</span>
+          <span
+            className="relative h-6 w-9 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--hairline)]"
+            style={{ background: hex }}
+          >
+            <input
+              type="color"
+              value={hex}
+              onChange={(e) => onChange(e.target.value)}
+              aria-label={control.label}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </span>
+        </span>
+      </label>
+    );
+  }
+
   // toggle
   const on = Boolean(value);
   return (

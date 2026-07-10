@@ -2,6 +2,10 @@ import { ascii } from "./effects/ascii";
 import { glitch } from "./effects/glitch";
 import { halftone } from "./effects/halftone";
 import { edges } from "./effects/edges";
+import { vision } from "./effects/vision";
+import { falsecolor } from "./effects/falsecolor";
+import { mirror } from "./effects/mirror";
+import { pixelate } from "./effects/pixelate";
 import { blendImageData, type BlendMode } from "./image";
 import type {
   EffectResult,
@@ -10,6 +14,10 @@ import type {
   GlitchParams,
   HalftoneParams,
   EdgeParams,
+  VisionParams,
+  FalseColorParams,
+  MirrorParams,
+  PixelateParams,
 } from "./effects/types";
 
 // UI control descriptors — ParamPanel renders these generically per active mode.
@@ -30,7 +38,8 @@ export type Control =
       options: { value: string; label: string }[];
     }
   | { kind: "toggle"; key: string; label: string }
-  | { kind: "seed"; key: string; label: string };
+  | { kind: "seed"; key: string; label: string }
+  | { kind: "color"; key: string; label: string };
 
 export type ParamValue = number | string | boolean;
 export type Params = Record<string, ParamValue>;
@@ -48,10 +57,14 @@ export type ModeDef = {
 export const MODE_ORDER: ModeId[] = [
   "ascii",
   "glitch",
+  "vision",
   "yolo",
   "halftone",
+  "falsecolor",
   "edges",
   "depth",
+  "mirror",
+  "pixelate",
 ];
 
 export const MODES: Record<ModeId, ModeDef> = {
@@ -185,6 +198,153 @@ export const MODES: Record<ModeId, ModeDef> = {
     ],
     defaults: { colormap: "turbo", invert: false },
   },
+
+  vision: {
+    id: "vision",
+    name: "Vision",
+    tagline: "Fake real-time detection HUD — boxes, tracked IDs, and connectors. Runs live on video where real detection can't.",
+    color: "var(--mode-vision)",
+    controls: [
+      { kind: "slider", key: "density", label: "Node density", min: 5, max: 120, step: 1 },
+      { kind: "slider", key: "coreFraction", label: "Tracked core", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "boxMinPx", label: "Box min", min: 4, max: 60, step: 1, unit: "px" },
+      { kind: "slider", key: "boxMaxPx", label: "Box max", min: 20, max: 260, step: 1, unit: "px" },
+      { kind: "slider", key: "jitter", label: "Jitter", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "flickerRate", label: "Flicker", min: 0, max: 30, step: 1, unit: "Hz" },
+      { kind: "slider", key: "connectorCount", label: "Connectors", min: 0, max: 80, step: 1 },
+      { kind: "slider", key: "hubCount", label: "Hubs", min: 0, max: 8, step: 1 },
+      { kind: "slider", key: "maxLinkDist", label: "Link reach", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "accentProb", label: "Accents", min: 0, max: 1, step: 0.01 },
+      { kind: "toggle", key: "nodeMarkers", label: "Node markers" },
+      { kind: "slider", key: "strokeWidth", label: "Stroke", min: 1, max: 4, step: 1, unit: "px" },
+      {
+        kind: "select",
+        key: "anchor",
+        label: "Anchor",
+        options: [
+          { value: "energy", label: "Energy (sticks to detail)" },
+          { value: "random", label: "Random" },
+        ],
+      },
+      { kind: "color", key: "boxColor", label: "Box color" },
+      { kind: "color", key: "lineColor", label: "Line color" },
+      { kind: "color", key: "accentColor", label: "Accent color" },
+      { kind: "slider", key: "lineOpacity", label: "Line opacity", min: 0, max: 1, step: 0.01 },
+      { kind: "seed", key: "seed", label: "Seed" },
+    ],
+    defaults: {
+      density: 44,
+      coreFraction: 0.35,
+      boxMinPx: 14,
+      boxMaxPx: 130,
+      jitter: 0.35,
+      flickerRate: 10,
+      connectorCount: 26,
+      hubCount: 2,
+      maxLinkDist: 0.55,
+      accentProb: 0.14,
+      nodeMarkers: false,
+      strokeWidth: 1,
+      anchor: "energy",
+      boxColor: "#4be3d0",
+      lineColor: "#ffffff",
+      accentColor: "#4be3d0",
+      lineOpacity: 0.5,
+      seed: 1337,
+    },
+  },
+
+  falsecolor: {
+    id: "falsecolor",
+    name: "False-color",
+    tagline: "Luminance mapped through a thermal or duotone ramp — predator vision and single-ink looks.",
+    color: "var(--mode-falsecolor)",
+    controls: [
+      {
+        kind: "select",
+        key: "palette",
+        label: "Palette",
+        options: [
+          { value: "ironbow", label: "Ironbow" },
+          { value: "whitehot", label: "White-hot" },
+          { value: "medical", label: "Medical" },
+          { value: "turbo", label: "Turbo" },
+          { value: "duotone", label: "Duotone" },
+        ],
+      },
+      { kind: "slider", key: "gain", label: "Gain", min: 0.2, max: 3, step: 0.05 },
+      { kind: "slider", key: "bias", label: "Bias", min: -0.5, max: 0.5, step: 0.01 },
+      { kind: "slider", key: "levels", label: "Bands", min: 0, max: 16, step: 1 },
+      { kind: "toggle", key: "invert", label: "Invert" },
+      { kind: "color", key: "shadowColor", label: "Duotone shadow" },
+      { kind: "color", key: "highlightColor", label: "Duotone highlight" },
+    ],
+    defaults: {
+      palette: "ironbow",
+      gain: 1.4,
+      bias: 0,
+      levels: 0,
+      invert: false,
+      shadowColor: "#06122e",
+      highlightColor: "#5ec8ff",
+    },
+  },
+
+  mirror: {
+    id: "mirror",
+    name: "Kaleidoscope",
+    tagline: "Fold any frame into mirror and rotational symmetry.",
+    color: "var(--mode-mirror)",
+    controls: [
+      {
+        kind: "select",
+        key: "pattern",
+        label: "Pattern",
+        options: [
+          { value: "kaleido", label: "Kaleidoscope" },
+          { value: "quadMirror", label: "Quad mirror" },
+          { value: "mirrorX", label: "Mirror X" },
+          { value: "mirrorY", label: "Mirror Y" },
+        ],
+      },
+      { kind: "slider", key: "segments", label: "Segments", min: 2, max: 24, step: 1 },
+      { kind: "slider", key: "angle", label: "Angle", min: 0, max: 360, step: 1, unit: "°" },
+      { kind: "slider", key: "centerX", label: "Center X", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "centerY", label: "Center Y", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "zoom", label: "Zoom", min: 0.5, max: 3, step: 0.05 },
+    ],
+    defaults: {
+      pattern: "kaleido",
+      segments: 8,
+      angle: 0,
+      centerX: 0.5,
+      centerY: 0.5,
+      zoom: 1.3,
+    },
+  },
+
+  pixelate: {
+    id: "pixelate",
+    name: "Pixelate",
+    tagline: "Block-average mosaic — the classic censor / vaporwave pixelation.",
+    color: "var(--mode-pixelate)",
+    controls: [
+      { kind: "slider", key: "blockSize", label: "Block size", min: 2, max: 64, step: 1, unit: "px" },
+      {
+        kind: "select",
+        key: "shape",
+        label: "Shape",
+        options: [
+          { value: "square", label: "Square" },
+          { value: "hex", label: "Hex" },
+          { value: "circle", label: "Circle / dot" },
+        ],
+      },
+      { kind: "toggle", key: "smooth", label: "Smooth" },
+      { kind: "toggle", key: "outline", label: "Grid lines" },
+    ],
+    defaults: { blockSize: 12, shape: "square", smooth: false, outline: false },
+  },
 };
 
 /** Dispatch a synchronous pixel effect. YOLO (detection) and Depth (async model
@@ -203,11 +363,36 @@ export function runPixelEffect(
       return halftone(source, params as unknown as HalftoneParams);
     case "edges":
       return edges(source, params as unknown as EdgeParams);
+    case "vision":
+      return vision(source, params as unknown as VisionParams);
+    case "falsecolor":
+      return falsecolor(source, params as unknown as FalseColorParams);
+    case "mirror":
+      return mirror(source, params as unknown as MirrorParams);
+    case "pixelate":
+      return pixelate(source, params as unknown as PixelateParams);
   }
 }
 
-export type PixelMode = "ascii" | "glitch" | "halftone" | "edges";
-export const PIXEL_MODES: PixelMode[] = ["ascii", "glitch", "halftone", "edges"];
+export type PixelMode =
+  | "ascii"
+  | "glitch"
+  | "halftone"
+  | "edges"
+  | "vision"
+  | "falsecolor"
+  | "mirror"
+  | "pixelate";
+export const PIXEL_MODES: PixelMode[] = [
+  "ascii",
+  "glitch",
+  "halftone",
+  "edges",
+  "vision",
+  "falsecolor",
+  "mirror",
+  "pixelate",
+];
 export function isPixelMode(m: ModeId): m is PixelMode {
   return (PIXEL_MODES as string[]).includes(m);
 }
@@ -255,4 +440,8 @@ export const DEFAULT_PARAMS: Record<ModeId, Params> = {
   halftone: { ...MODES.halftone.defaults },
   edges: { ...MODES.edges.defaults },
   depth: { ...MODES.depth.defaults },
+  vision: { ...MODES.vision.defaults },
+  falsecolor: { ...MODES.falsecolor.defaults },
+  mirror: { ...MODES.mirror.defaults },
+  pixelate: { ...MODES.pixelate.defaults },
 };

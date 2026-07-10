@@ -3,6 +3,7 @@
 // is the state.
 
 import { MODES, MODE_ORDER, makeStage, type Params, type Stage } from "./modes";
+import { normalizeHex } from "./color";
 import type { ModeId } from "./effects/types";
 
 const KEY = "r";
@@ -78,6 +79,8 @@ function sanitizeParams(id: ModeId, raw: unknown): Params {
       out[cont.key] = Boolean(v);
     } else if (cont.kind === "select") {
       if (typeof v === "string" && cont.options.some((o) => o.value === v)) out[cont.key] = v;
+    } else if (cont.kind === "color") {
+      out[cont.key] = normalizeHex(v, out[cont.key] as string);
     } else {
       const n = Number(v);
       if (!Number.isFinite(n)) continue;

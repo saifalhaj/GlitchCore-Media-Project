@@ -2,7 +2,17 @@
 // functions `(source, params) => EffectResult`. YOLO is separate (async, returns
 // boxes rather than transformed pixels) — see ./yolo.ts.
 
-export type ModeId = "ascii" | "glitch" | "yolo" | "halftone" | "edges" | "depth";
+export type ModeId =
+  | "ascii"
+  | "glitch"
+  | "yolo"
+  | "halftone"
+  | "edges"
+  | "depth"
+  | "vision"
+  | "falsecolor"
+  | "mirror"
+  | "pixelate";
 
 /** Output of a pixel effect. `text` is only set by ASCII (the raw character grid,
  *  retained for "Copy as text" — the canvas is a rasterization of it). */
@@ -53,6 +63,53 @@ export type EdgeParams = {
 export type DepthParams = {
   colormap: "grayscale" | "turbo";
   invert: boolean; // swap near/far brightness
+};
+
+export type VisionParams = {
+  density: number; // target node count
+  coreFraction: number; // 0–1, share of nodes that persist with stable IDs
+  boxMinPx: number;
+  boxMaxPx: number;
+  jitter: number; // 0–1, per-frame position wobble
+  flickerRate: number; // Hz — bucket rate that reshuffles ephemeral nodes
+  connectorCount: number;
+  hubCount: number; // hub-and-spoke: how many hubs links fan from
+  maxLinkDist: number; // 0–1, fraction of image diagonal
+  accentProb: number; // 0–1, chance a node gets a cyan fill / chip
+  nodeMarkers: boolean;
+  strokeWidth: number;
+  anchor: "energy" | "random"; // energy = saliency-anchored nodes
+  boxColor: string; // #rrggbb
+  lineColor: string;
+  accentColor: string;
+  lineOpacity: number; // 0–1 (the "pink line" illusion is white at low alpha)
+  seed: number;
+};
+
+export type FalseColorParams = {
+  palette: "ironbow" | "whitehot" | "medical" | "turbo" | "duotone";
+  gain: number;
+  bias: number; // -0.5–0.5
+  levels: number; // 0 = continuous, else quantize into N bands
+  invert: boolean;
+  shadowColor: string; // duotone low #rrggbb
+  highlightColor: string; // duotone high #rrggbb
+};
+
+export type MirrorParams = {
+  pattern: "kaleido" | "quadMirror" | "mirrorX" | "mirrorY";
+  segments: number;
+  angle: number; // degrees
+  centerX: number; // 0–1
+  centerY: number; // 0–1
+  zoom: number;
+};
+
+export type PixelateParams = {
+  blockSize: number; // px
+  shape: "square" | "hex" | "circle";
+  smooth: boolean; // average (true) vs nearest (false) sampling
+  outline: boolean; // draw grid lines between blocks
 };
 
 /** A single YOLO detection in source-image pixel coordinates (top-left origin). */

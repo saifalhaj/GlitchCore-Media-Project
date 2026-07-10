@@ -24,6 +24,10 @@
   --mode-halftone: #3e6fd9;   /* ink blue — print reference */
   --mode-edge: #c9ccd1;       /* silver/graphite — line-art reference */
   --mode-depth: #a78bff;      /* violet — depth / spatial reference */
+  --mode-vision: #19e3b4;     /* teal — surveillance HUD */
+  --mode-falsecolor: #ff5a5f; /* thermal coral */
+  --mode-mirror: #ffd23f;     /* kaleidoscope gold */
+  --mode-pixelate: #ff6ec7;   /* vaporwave pink */
 
   /* Active accent — reassigned to the active mode's hue at runtime. */
   --accent: var(--mode-ascii);

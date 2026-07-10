@@ -1,6 +1,6 @@
 # GlitchCore — image effects
 
-Upload an image or a short video, run it through six algorithmic modes, tune
+Upload an image or a short video, run it through ten algorithmic modes, tune
 each live, export the result. **Everything runs client-side** — nothing is
 uploaded, there is no server, no database, no accounts.
 
@@ -15,19 +15,25 @@ Two routes:
   **Advanced**. Live thumbnails in the mode rail show the current media
   already run through each mode, so the switcher doubles as a gallery.
 
-## The five modes
+## The ten modes
 
 | Mode | What it does |
 |------|--------------|
 | **ASCII** | Samples the image on a grid, maps cell luminance to a character ramp, rasterizes to canvas (and keeps the raw text for copy-as-text). Mono or sampled color, three ramps, invert. |
 | **Glitchcore** | Stacked datamosh: RGB channel shift, pixel sort (Kim Asendorf style), block corruption, scanlines. Seeded so a glitch is reproducible until re-rolled. |
-| **YOLO** | Real object detection with **YOLO11n** running in your browser via `onnxruntime-web` (WebGPU with automatic WASM fallback). Boxes + labels on a separate overlay layer. |
+| **Vision** | A *fake* real-time detection HUD — boxes, tracked integer IDs, hub-and-spoke connectors, cyan accents. Procedural, so unlike real YOLO it runs **live on video**. Colors are user-editable. |
+| **YOLO** | Real object detection with **YOLO11n** running in your browser via `onnxruntime-web` (WebGPU with automatic WASM fallback). Boxes + labels baked into the frame so it stacks like any layer. |
 | **Halftone** | Ordered dithering (Bayer 4×4 / 8×8), Floyd–Steinberg error diffusion, and true dot halftone. Mono or duotone. |
+| **False-color** | Luminance mapped through a thermal (ironbow / white-hot / medical / turbo) or a 2-color **duotone** ramp, with gain, bias, and isotherm banding. Predator-vision and single-ink editorial looks. |
 | **Edge Map** | Sobel gradient magnitude → line art, with threshold and invert. |
 | **Depth** | Monocular depth estimation (**Depth-Anything V2 small**, ONNX) in the browser — near is bright. Turbo or grayscale colormap, invertible. |
+| **Kaleidoscope** | Coordinate remap into mirror & rotational symmetry — kaleido, quad-mirror, or single-axis fold, with adjustable segments, angle, center, and zoom. |
+| **Pixelate** | Block-average mosaic — square, dot-grid, or hex; the classic censor / vaporwave look. |
 
 Each effect is a pure function in [`lib/effects/`](lib/effects) — independently
-testable and swappable.
+testable and swappable. Vision, False-color, Kaleidoscope, and Pixelate are all
+sync-pixel effects, so they run **live on video** where the model-backed modes
+(YOLO, Depth) are still-only.
 
 ## Stacking & sharing
 

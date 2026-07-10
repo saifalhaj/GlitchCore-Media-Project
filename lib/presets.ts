@@ -46,6 +46,31 @@ export const PRESETS: Record<ModeId, Preset[]> = {
     { name: "Silver", params: { colormap: "grayscale", invert: false } },
     { name: "Depth fog", params: { colormap: "grayscale", invert: true }, opacity: 0.55, blend: "screen" },
   ],
+  vision: [
+    { name: "Surveillance", params: { anchor: "energy", density: 44, accentProb: 0.14, nodeMarkers: false, boxColor: "#4be3d0", accentColor: "#4be3d0", lineColor: "#ffffff", lineOpacity: 0.5 } },
+    { name: "Targeting", params: { density: 22, boxMinPx: 24, boxMaxPx: 90, hubCount: 1, accentProb: 0.24, nodeMarkers: true, boxColor: "#ff3b3b", accentColor: "#ff3b3b", lineColor: "#ff9a9a", lineOpacity: 0.6 } },
+    { name: "Swarm", params: { density: 100, flickerRate: 20, jitter: 0.6, connectorCount: 44 } },
+    { name: "Ghost HUD", params: { density: 34, accentProb: 0.08, lineOpacity: 0.3 }, opacity: 0.5, blend: "screen" },
+  ],
+  falsecolor: [
+    { name: "Ironbow", params: { palette: "ironbow", gain: 1.4, levels: 0, invert: false } },
+    { name: "White-hot", params: { palette: "whitehot", gain: 1.3, levels: 0, invert: false } },
+    { name: "Black-hot", params: { palette: "whitehot", gain: 1.5, invert: true } },
+    { name: "Isotherm", params: { palette: "medical", gain: 1.4, levels: 6 } },
+    { name: "Cobalt duotone", params: { palette: "duotone", gain: 1.5, shadowColor: "#06122e", highlightColor: "#5ec8ff" } },
+  ],
+  mirror: [
+    { name: "Mandala", params: { pattern: "kaleido", segments: 8, zoom: 1.3 } },
+    { name: "Quad fold", params: { pattern: "quadMirror", zoom: 1.1 } },
+    { name: "Hexascope", params: { pattern: "kaleido", segments: 12, zoom: 1.5 } },
+    { name: "Prism split", params: { pattern: "kaleido", segments: 6, zoom: 1.6 }, opacity: 0.6, blend: "screen" },
+  ],
+  pixelate: [
+    { name: "Censor", params: { blockSize: 22, shape: "square", outline: false } },
+    { name: "Vaporwave", params: { blockSize: 14, shape: "square", outline: true } },
+    { name: "Dot grid", params: { blockSize: 12, shape: "circle" } },
+    { name: "Chunky hex", params: { blockSize: 20, shape: "hex" } },
+  ],
 };
 
 /** True when the layer's current settings match this preset exactly. */
