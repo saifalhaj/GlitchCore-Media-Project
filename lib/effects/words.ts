@@ -451,8 +451,11 @@ export function words(
       } else {
         word = pool[Math.min(pool.length - 1, Math.floor(r0 * pool.length))];
       }
-      const include = hasMask ? coverage >= MATTE_INCLUDE : inR;
-      rowWords[rx] = include ? word : ""; // text export matches what's rendered
+      // Text matches ink: include a precise-matte cell wherever its edge alpha is
+      // nonzero (coverage > 0.15, the smoothstep floor below), so the exported
+      // words are exactly the ones visibly rendered along the silhouette.
+      const include = hasMask ? coverage > 0.15 : inR;
+      rowWords[rx] = include ? word : "";
 
       if (hasMask && coverage < 0.06) continue; // essentially outside the silhouette
 
