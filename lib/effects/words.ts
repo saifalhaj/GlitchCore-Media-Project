@@ -141,6 +141,9 @@ function computeAccent(
   applyTo: string,
   split: number,
   mask?: Float32Array,
+  cells?: Uint8Array | null,
+  cols?: number,
+  rows?: number,
 ): string | null {
   const sw = source.width;
   const sh = source.height;
@@ -149,7 +152,13 @@ function computeAccent(
   const inTest = (x: number, y: number, i: number): boolean => {
     switch (applyTo) {
       case "subject":
-        return hasMask ? mask![i] > 0.4 : true;
+        if (hasMask) return mask![i] > 0.4;
+        if (cells && cols && rows) {
+          const cx = Math.min(cols - 1, Math.floor((x * cols) / sw));
+          const cy = Math.min(rows - 1, Math.floor((y * rows) / sh));
+          return cells[cy * cols + cx] === 1;
+        }
+        return true;
       case "left":
         return x < split * sw;
       case "right":
@@ -216,11 +225,48 @@ export function words(
   const applyTo = params.applyTo ?? "whole";
   const split = clamp01(params.splitAt ?? 0.5);
   const bgMode = params.background ?? "keep";
+  const hasMask = !!mask && mask.length === sw * sh;
+  const splitCol = Math.round(split * cols);
+  const splitRow = Math.round(split * rows);
+  // Fast (model-free) subject cells — computed once and reused for the accent,
+  // the clip mask, and the text export so they all agree on the element.
+  const fastCells =
+    applyTo === "subject" && !hasMask
+      ? saliencyCells(src, sw, sh, cols, rows, split)
+      : null;
+
+  // Which grid cells fall inside the wordified region. For a precise (soft) matte
+  // the visible edge is sub-cell, so ink is still drawn for every cell and the
+  // matte clip trims it — but the text export samples the matte at the cell centre.
+  const cellInRegion = (rx: number, ry: number): boolean => {
+    switch (applyTo) {
+      case "left":
+        return rx < splitCol;
+      case "right":
+        return rx >= splitCol;
+      case "top":
+        return ry < splitRow;
+      case "bottom":
+        return ry >= splitRow;
+      case "subject":
+        if (hasMask) {
+          const px = Math.min(sw - 1, Math.floor(((rx + 0.5) * sw) / cols));
+          const py = Math.min(sh - 1, Math.floor(((ry + 0.5) * sh) / rows));
+          return mask![py * sw + px] > 0.4;
+        }
+        return fastCells ? fastCells[ry * cols + rx] === 1 : true;
+      default:
+        return true;
+    }
+  };
+  // Cell-based regions (halves, fast subject) can skip ink for out-of-region
+  // cells; a soft matte keeps them so the clipped silhouette edge stays clean.
+  const skipOutOfRegion = applyTo !== "whole" && !(applyTo === "subject" && hasMask);
 
   // Highlight colour: user-chosen, or sampled from the element itself.
   let highlight = rgbToHex(...hexToRgb(params.highlight));
   if (params.autoColor) {
-    const accent = computeAccent(source, applyTo, split, mask);
+    const accent = computeAccent(source, applyTo, split, mask, fastCells, cols, rows);
     if (accent) highlight = accent;
   }
 
@@ -257,6 +303,11 @@ export function words(
     const nyEdge = Math.min((ry + 0.5) / rows, 1 - (ry + 0.5) / rows) * 2;
 
     for (let rx = 0; rx < cols; rx++) {
+      const inR = cellInRegion(rx, ry);
+      if (!inR && skipOutOfRegion) {
+        rowWords[rx] = ""; // out of a cell-based region → not drawn, not in text
+        continue;
+      }
       const x0 = Math.floor((rx * sw) / cols);
       const x1 = Math.max(x0 + 1, Math.floor(((rx + 1) * sw) / cols));
 
@@ -290,7 +341,7 @@ export function words(
       } else {
         word = pool[Math.min(pool.length - 1, Math.floor(r0 * pool.length))];
       }
-      rowWords[rx] = word;
+      rowWords[rx] = inR ? word : ""; // precise-matte cells outside the centre → blank in text
 
       const nxEdge = Math.min((rx + 0.5) / cols, 1 - (rx + 0.5) / cols) * 2;
       const edgeDist = Math.min(nxEdge, nyEdge);
@@ -367,7 +418,7 @@ export function words(
       mctx.drawImage(mf, 0, 0, sw, sh, 0, 0, canvasW, canvasH);
     } else {
       // Fast: block out the salient cells (blocky, but model-free / video-safe).
-      const cells = saliencyCells(src, sw, sh, cols, rows, split);
+      const cells = fastCells ?? saliencyCells(src, sw, sh, cols, rows, split);
       for (let cy = 0; cy < rows; cy++) {
         for (let cx = 0; cx < cols; cx++) {
           if (cells[cy * cols + cx]) {
