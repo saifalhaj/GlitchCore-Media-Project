@@ -133,6 +133,65 @@ function saliencyCells(
   return cells;
 }
 
+/** Sample a representative accent colour from the wordified region — a
+ *  saturation-weighted average (vivid pixels dominate), then punched up. Lets
+ *  the highlight words match the element's own colour (e.g. a red jacket). */
+function computeAccent(
+  source: ImageData,
+  applyTo: string,
+  split: number,
+  mask?: Float32Array,
+): string | null {
+  const sw = source.width;
+  const sh = source.height;
+  const d = source.data;
+  const hasMask = !!mask && mask.length === sw * sh;
+  const inTest = (x: number, y: number, i: number): boolean => {
+    switch (applyTo) {
+      case "subject":
+        return hasMask ? mask![i] > 0.4 : true;
+      case "left":
+        return x < split * sw;
+      case "right":
+        return x >= split * sw;
+      case "top":
+        return y < split * sh;
+      case "bottom":
+        return y >= split * sh;
+      default:
+        return true;
+    }
+  };
+  let R = 0;
+  let G = 0;
+  let B = 0;
+  let W = 0;
+  for (let y = 0; y < sh; y += 3) {
+    for (let x = 0; x < sw; x += 3) {
+      const i = y * sw + x;
+      if (!inTest(x, y, i)) continue;
+      const p = i * 4;
+      const r = d[p];
+      const g = d[p + 1];
+      const b = d[p + 2];
+      const mx = Math.max(r, g, b);
+      const mn = Math.min(r, g, b);
+      const sat = mx > 0 ? (mx - mn) / mx : 0;
+      const w = sat * sat + 0.02; // vivid pixels dominate; tiny floor for greys
+      R += r * w;
+      G += g * w;
+      B += b * w;
+      W += w;
+    }
+  }
+  if (W <= 0) return null;
+  const mean = (R + G + B) / (3 * W);
+  const boost = 1.5;
+  const ch = (v: number) =>
+    Math.round(Math.max(0, Math.min(255, mean + (v / W - mean) * boost)));
+  return rgbToHex(ch(R), ch(G), ch(B));
+}
+
 export function words(
   source: ImageData,
   params: WordsParams,
@@ -151,13 +210,19 @@ export function words(
   const pool = buildPool(params, mulberry32(seed));
   const threshold = clamp01(params.highlightThreshold);
   const dissolve = clamp01(params.dissolve);
-  const highlight = rgbToHex(...hexToRgb(params.highlight));
   const paper = params.paper === "transparent" ? null : PAPER[params.paper];
   const ink = paper ? paper.ink : params.invert ? "#0b0c0e" : "#edebe3";
 
   const applyTo = params.applyTo ?? "whole";
   const split = clamp01(params.splitAt ?? 0.5);
   const bgMode = params.background ?? "keep";
+
+  // Highlight colour: user-chosen, or sampled from the element itself.
+  let highlight = rgbToHex(...hexToRgb(params.highlight));
+  if (params.autoColor) {
+    const accent = computeAccent(source, applyTo, split, mask);
+    if (accent) highlight = accent;
+  }
 
   // Output: preserve source aspect so the (possibly transparent) layer composites
   // cleanly over the original. Cell width is capped for perf on video.
@@ -318,6 +383,26 @@ export function words(
     const ry0 = applyTo === "bottom" ? Math.round(split * rows) * cellPxH : 0;
     const ry1 = applyTo === "top" ? Math.round(split * rows) * cellPxH : canvasH;
     mctx.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
+  }
+
+  // Soft drop-shadow: a blurred, offset, dark copy of the region silhouette,
+  // laid under the words so the element lifts off the background.
+  const shadow = clamp01(params.shadow ?? 0);
+  if (shadow > 0) {
+    const sc = document.createElement("canvas");
+    sc.width = canvasW;
+    sc.height = canvasH;
+    const sx = sc.getContext("2d")!;
+    sx.drawImage(maskCanvas, 0, 0);
+    sx.globalCompositeOperation = "source-in";
+    sx.fillStyle = "#0a0b0d";
+    sx.fillRect(0, 0, canvasW, canvasH);
+    const off = Math.round(canvasW * 0.012 * (0.6 + shadow));
+    octx.save();
+    octx.globalAlpha = 0.5 * shadow;
+    octx.filter = `blur(${Math.round(4 + 14 * shadow)}px)`;
+    octx.drawImage(sc, off, off);
+    octx.restore();
   }
 
   // Clip the word raster to the region, then lay it over the background.

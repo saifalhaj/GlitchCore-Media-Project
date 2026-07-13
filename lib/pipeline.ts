@@ -48,13 +48,18 @@ export async function produceStage(stage: Stage, source: ImageData): Promise<Eff
   ) {
     // Precise "one element": RMBG matte → wordify only that silhouette. Still
     // path only; if the model is missing, fall back to the fast saliency mask.
+    const wp = stage.params as unknown as WordsParams;
     let mask: Float32Array | undefined;
     try {
-      mask = await computeMatte(source, { matteThreshold: 0.5, feather: 2 });
+      const tighten = Math.max(0, Math.min(1, wp.matteTighten ?? 0.5));
+      mask = await computeMatte(source, {
+        matteThreshold: 0.35 + tighten * 0.4, // higher → tighter silhouette
+        feather: Math.max(0, Math.round(wp.matteFeather ?? 1)),
+      });
     } catch {
       mask = undefined;
     }
-    r = words(source, stage.params as unknown as WordsParams, mask);
+    r = words(source, wp, mask);
   } else if (isPixelMode(stage.mode)) {
     r = runPixelEffect(stage.mode, source, stage.params);
   } else if (isTemporalMode(stage.mode)) {

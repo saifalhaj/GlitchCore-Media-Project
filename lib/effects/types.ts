@@ -184,6 +184,10 @@ export type WordsParams = {
   splitAt: number; // 0–1: divider position for halves / detail cutoff for subject
   subjectDetect: "fast" | "precise"; // fast = saliency (video-safe); precise = RMBG matte (still-only)
   background: "keep" | "fade" | "paper" | "remove"; // treatment for the non-wordified area
+  matteTighten: number; // 0–1: shrink the precise silhouette toward its core (tighter edges)
+  matteFeather: number; // 0–8 px: soften the silhouette edge
+  shadow: number; // 0–1: soft drop-shadow behind the wordified element (0 = off)
+  autoColor: boolean; // pick the highlight color from the element's own colors
   columns: number;
   toneMode: "opacity" | "weight"; // brightness → opacity or font-weight
   highlight: string; // #rrggbb for the brightest cells
