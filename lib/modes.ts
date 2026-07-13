@@ -567,6 +567,26 @@ export const MODES: Record<ModeId, ModeDef> = {
         ],
       },
       { kind: "slider", key: "splitAt", label: "Split / size", min: 0.1, max: 0.9, step: 0.01 },
+      {
+        kind: "select",
+        key: "subjectDetect",
+        label: "Subject find",
+        options: [
+          { value: "precise", label: "Precise · cutout" },
+          { value: "fast", label: "Fast · video" },
+        ],
+      },
+      {
+        kind: "select",
+        key: "background",
+        label: "Background",
+        options: [
+          { value: "keep", label: "Keep original" },
+          { value: "fade", label: "Faded" },
+          { value: "paper", label: "Paper" },
+          { value: "remove", label: "Remove" },
+        ],
+      },
       { kind: "slider", key: "columns", label: "Columns", min: 12, max: 72, step: 1, unit: "w" },
       {
         kind: "select",
@@ -600,6 +620,8 @@ export const MODES: Record<ModeId, ModeDef> = {
       regionMode: "mix",
       applyTo: "whole",
       splitAt: 0.5,
+      subjectDetect: "precise",
+      background: "keep",
       columns: 28,
       toneMode: "opacity",
       highlight: "#e0603a",

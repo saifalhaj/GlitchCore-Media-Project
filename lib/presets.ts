@@ -93,8 +93,9 @@ export const PRESETS: Record<ModeId, Preset[]> = {
   ],
   words: [
     { name: "Seascape", params: { source: "vocab", vocabulary: "CLOUDS BOAT OCEAN", regionMode: "bands", applyTo: "whole", columns: 34, toneMode: "opacity", paper: "cream", dissolve: 0.3, highlight: "#3a6ea5" } },
-    { name: "Split reveal", params: { source: "vocab", vocabulary: "CLOUDS BOAT OCEAN", regionMode: "bands", applyTo: "right", splitAt: 0.5, columns: 34, toneMode: "opacity", paper: "cream", dissolve: 0.18, highlight: "#3a6ea5" } },
-    { name: "Subject", params: { source: "vocab", vocabulary: "FIGURE SUBJECT FORM", regionMode: "luminance", applyTo: "subject", splitAt: 0.4, columns: 42, toneMode: "opacity", paper: "cream", dissolve: 0.12, highlight: "#e0603a" } },
+    { name: "Split reveal", params: { source: "vocab", vocabulary: "CLOUDS BOAT OCEAN", regionMode: "bands", applyTo: "right", splitAt: 0.5, background: "keep", columns: 34, toneMode: "opacity", paper: "cream", dissolve: 0.18, highlight: "#3a6ea5" } },
+    { name: "One element", params: { source: "vocab", vocabulary: "FORM SHAPE SUBJECT FIGURE", regionMode: "mix", applyTo: "subject", subjectDetect: "precise", background: "fade", columns: 40, toneMode: "opacity", paper: "cream", dissolve: 0.1, highlight: "#e0603a" } },
+    { name: "Element cutout", params: { source: "vocab", vocabulary: "FORM SHAPE SUBJECT FIGURE", regionMode: "mix", applyTo: "subject", subjectDetect: "precise", background: "remove", columns: 40, toneMode: "opacity", paper: "cream", dissolve: 0.08, highlight: "#e0603a" } },
     { name: "Workspace", params: { source: "vocab", regionMode: "mix", applyTo: "whole", columns: 28, toneMode: "opacity", paper: "cream", dissolve: 0.6, highlight: "#e0603a" } },
     { name: "Ledger", params: { source: "numbers", regionMode: "mix", applyTo: "whole", columns: 40, toneMode: "opacity", paper: "white", dissolve: 0.4 } },
     { name: "Terrain", params: { source: "vocab", vocabulary: "SKY RIDGE FOREST VALLEY RIVER", regionMode: "bands", applyTo: "whole", columns: 40, toneMode: "opacity", paper: "cream", dissolve: 0.25, highlight: "#2f7d4f" } },

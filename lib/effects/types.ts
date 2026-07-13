@@ -182,6 +182,8 @@ export type WordsParams = {
   regionMode: "mix" | "bands" | "luminance"; // how words map to image regions
   applyTo: "whole" | "left" | "right" | "top" | "bottom" | "subject"; // confine effect to a region; rest shows original
   splitAt: number; // 0–1: divider position for halves / detail cutoff for subject
+  subjectDetect: "fast" | "precise"; // fast = saliency (video-safe); precise = RMBG matte (still-only)
+  background: "keep" | "fade" | "paper" | "remove"; // treatment for the non-wordified area
   columns: number;
   toneMode: "opacity" | "weight"; // brightness → opacity or font-weight
   highlight: string; // #rrggbb for the brightest cells

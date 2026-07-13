@@ -11,8 +11,9 @@ import {
 import { detectAndBake } from "./effects/yolo";
 import { estimateDepth } from "./effects/depth";
 import { poseBake } from "./effects/pose";
-import { cutout } from "./effects/cutout";
+import { cutout, computeMatte } from "./effects/cutout";
 import { depth3d } from "./effects/depth3d";
+import { words } from "./effects/words";
 import { blendImageData } from "./image";
 import type {
   EffectResult,
@@ -21,6 +22,7 @@ import type {
   PoseParams,
   CutoutParams,
   Depth3dParams,
+  WordsParams,
 } from "./effects/types";
 
 /** Produce one stage's output from an input frame, composited at the layer's
@@ -39,6 +41,20 @@ export async function produceStage(stage: Stage, source: ImageData): Promise<Eff
     r = { imageData: await cutout(source, stage.params as unknown as CutoutParams) };
   } else if (stage.mode === "depth3d") {
     r = { imageData: await depth3d(source, stage.params as unknown as Depth3dParams) };
+  } else if (
+    stage.mode === "words" &&
+    (stage.params as unknown as WordsParams).applyTo === "subject" &&
+    (stage.params as unknown as WordsParams).subjectDetect === "precise"
+  ) {
+    // Precise "one element": RMBG matte → wordify only that silhouette. Still
+    // path only; if the model is missing, fall back to the fast saliency mask.
+    let mask: Float32Array | undefined;
+    try {
+      mask = await computeMatte(source, { matteThreshold: 0.5, feather: 2 });
+    } catch {
+      mask = undefined;
+    }
+    r = words(source, stage.params as unknown as WordsParams, mask);
   } else if (isPixelMode(stage.mode)) {
     r = runPixelEffect(stage.mode, source, stage.params);
   } else if (isTemporalMode(stage.mode)) {

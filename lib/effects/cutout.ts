@@ -44,7 +44,13 @@ function boxBlur(a: Float32Array, r: number): Float32Array {
   return out;
 }
 
-export async function cutout(source: ImageData, params: CutoutParams): Promise<ImageData> {
+/** Run RMBG-1.4 and return a per-pixel subject alpha (0..1) at the source
+ *  resolution. Shared by the Cutout mode and by Word raster's precise "subject"
+ *  region. Throws MODEL_UNAVAILABLE if the model file is missing. */
+export async function computeMatte(
+  source: ImageData,
+  opts: { matteThreshold: number; feather: number; invert?: boolean },
+): Promise<Float32Array> {
   const session = await loadSession(MODEL_PATH); // MODEL_UNAVAILABLE propagates
   const w = source.width;
   const h = source.height;
@@ -91,19 +97,19 @@ export async function cutout(source: ImageData, params: CutoutParams): Promise<I
   const range = max - min || 1;
 
   // 3. Alpha from smoothstep threshold; optional feather blur; optional invert.
-  const lo = params.matteThreshold - 0.15;
-  const hi = params.matteThreshold + 0.15;
+  const lo = opts.matteThreshold - 0.15;
+  const hi = opts.matteThreshold + 0.15;
   let alpha: Float32Array = new Float32Array(area);
   for (let i = 0; i < area; i++) {
     alpha[i] = smoothstep(lo, hi, (matte[i] - min) / range);
   }
-  const r = Math.round(params.feather);
-  if (r > 0) alpha = boxBlur(alpha, r);
-  if (params.invert) {
+  const rr = Math.round(opts.feather);
+  if (rr > 0) alpha = boxBlur(alpha, rr);
+  if (opts.invert) {
     for (let i = 0; i < area; i++) alpha[i] = 1 - alpha[i];
   }
 
-  // 4. Stretch the 1024 alpha back to source W×H.
+  // 4. Stretch the 1024 alpha back to source W×H (bilinear via canvas).
   const alphaImg = new ImageData(SIZE, SIZE);
   for (let i = 0; i < area; i++) {
     const g = Math.round(Math.max(0, Math.min(1, alpha[i])) * 255);
@@ -123,7 +129,26 @@ export async function cutout(source: ImageData, params: CutoutParams): Promise<I
   const aToCtx = aTo.getContext("2d", { willReadFrequently: true })!;
   aToCtx.imageSmoothingEnabled = true;
   aToCtx.drawImage(aFrom, 0, 0, w, h);
-  const alphaFull = aToCtx.getImageData(0, 0, w, h).data;
+  const stretched = aToCtx.getImageData(0, 0, w, h).data;
+
+  const outMask = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) outMask[i] = stretched[i * 4] / 255;
+  return outMask;
+}
+
+export async function cutout(source: ImageData, params: CutoutParams): Promise<ImageData> {
+  const w = source.width;
+  const h = source.height;
+  const alphaMask = await computeMatte(source, {
+    matteThreshold: params.matteThreshold,
+    feather: params.feather,
+    invert: params.invert,
+  });
+
+  const srcCanvas = document.createElement("canvas");
+  srcCanvas.width = w;
+  srcCanvas.height = h;
+  srcCanvas.getContext("2d")!.putImageData(source, 0, 0);
 
   // 5. Composite per output mode.
   const out = new ImageData(w, h);
@@ -136,7 +161,7 @@ export async function cutout(source: ImageData, params: CutoutParams): Promise<I
       o[p] = s[p];
       o[p + 1] = s[p + 1];
       o[p + 2] = s[p + 2];
-      o[p + 3] = alphaFull[p]; // alpha channel from stretched matte's R
+      o[p + 3] = Math.round(alphaMask[i] * 255);
     }
     return out;
   }
@@ -174,7 +199,7 @@ export async function cutout(source: ImageData, params: CutoutParams): Promise<I
 
   for (let i = 0, n = w * h; i < n; i++) {
     const p = i * 4;
-    const a = alphaFull[p] / 255;
+    const a = alphaMask[i];
     o[p] = Math.round(plate[p] * (1 - a) + s[p] * a);
     o[p + 1] = Math.round(plate[p + 1] * (1 - a) + s[p + 1] * a);
     o[p + 2] = Math.round(plate[p + 2] * (1 - a) + s[p + 2] * a);
