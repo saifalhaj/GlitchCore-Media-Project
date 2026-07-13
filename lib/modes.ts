@@ -591,6 +591,8 @@ export const MODES: Record<ModeId, ModeDef> = {
       { kind: "slider", key: "matteFeather", label: "Edge feather", min: 0, max: 8, step: 1, unit: "px" },
       { kind: "slider", key: "shadow", label: "Drop shadow", min: 0, max: 1, step: 0.01 },
       { kind: "toggle", key: "autoColor", label: "Auto color" },
+      { kind: "slider", key: "bgFade", label: "Fade amount", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "edgeFade", label: "Edge blend", min: 0, max: 1, step: 0.01 },
       { kind: "slider", key: "columns", label: "Columns", min: 12, max: 72, step: 1, unit: "w" },
       {
         kind: "select",
@@ -630,6 +632,8 @@ export const MODES: Record<ModeId, ModeDef> = {
       matteFeather: 1,
       shadow: 0,
       autoColor: false,
+      bgFade: 0.66,
+      edgeFade: 0,
       columns: 28,
       toneMode: "opacity",
       highlight: "#e0603a",

@@ -381,7 +381,7 @@ export function words(
     octx.drawImage(srcCanvas, 0, 0, sw, sh, 0, 0, canvasW, canvasH);
     if (bgMode === "fade") {
       // wash the original toward paper so the focus stays on the words.
-      octx.globalAlpha = 0.66;
+      octx.globalAlpha = clamp01(params.bgFade ?? 0.66);
       octx.fillStyle = paper ? paper.bg : "#f1ede4";
       octx.fillRect(0, 0, canvasW, canvasH);
       octx.globalAlpha = 1;
@@ -436,6 +436,20 @@ export function words(
     mctx.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
   }
 
+  // Optional feathered boundary: blur the region mask so the words dissolve into
+  // the background at the edge (a soft split line, or a soft silhouette edge).
+  const edgeFade = clamp01(params.edgeFade ?? 0);
+  let regionMask = maskCanvas;
+  if (edgeFade > 0) {
+    const fm = document.createElement("canvas");
+    fm.width = canvasW;
+    fm.height = canvasH;
+    const fx = fm.getContext("2d")!;
+    fx.filter = `blur(${Math.max(1, Math.round(edgeFade * canvasW * 0.04))}px)`;
+    fx.drawImage(maskCanvas, 0, 0);
+    regionMask = fm;
+  }
+
   // Soft drop-shadow: a blurred, offset, dark copy of the region silhouette,
   // laid under the words so the element lifts off the background.
   const shadow = clamp01(params.shadow ?? 0);
@@ -444,7 +458,7 @@ export function words(
     sc.width = canvasW;
     sc.height = canvasH;
     const sx = sc.getContext("2d")!;
-    sx.drawImage(maskCanvas, 0, 0);
+    sx.drawImage(regionMask, 0, 0);
     sx.globalCompositeOperation = "source-in";
     sx.fillStyle = "#0a0b0d";
     sx.fillRect(0, 0, canvasW, canvasH);
@@ -463,7 +477,7 @@ export function words(
   const cctx = clip.getContext("2d")!;
   cctx.drawImage(wordCanvas, 0, 0);
   cctx.globalCompositeOperation = "destination-in";
-  cctx.drawImage(maskCanvas, 0, 0);
+  cctx.drawImage(regionMask, 0, 0);
   octx.drawImage(clip, 0, 0);
 
   return { imageData: octx.getImageData(0, 0, canvasW, canvasH), text };

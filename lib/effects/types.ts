@@ -188,6 +188,8 @@ export type WordsParams = {
   matteFeather: number; // 0–8 px: soften the silhouette edge
   shadow: number; // 0–1: soft drop-shadow behind the wordified element (0 = off)
   autoColor: boolean; // pick the highlight color from the element's own colors
+  bgFade: number; // 0–1: how far the "fade" background washes toward paper
+  edgeFade: number; // 0–1: feather the region boundary (soft split / soft silhouette)
   columns: number;
   toneMode: "opacity" | "weight"; // brightness → opacity or font-weight
   highlight: string; // #rrggbb for the brightest cells
