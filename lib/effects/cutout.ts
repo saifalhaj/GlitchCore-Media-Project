@@ -44,13 +44,17 @@ function boxBlur(a: Float32Array, r: number): Float32Array {
   return out;
 }
 
-/** Run RMBG-1.4 and return a per-pixel subject alpha (0..1) at the source
- *  resolution. Shared by the Cutout mode and by Word raster's precise "subject"
- *  region. Throws MODEL_UNAVAILABLE if the model file is missing. */
-export async function computeMatte(
-  source: ImageData,
-  opts: { matteThreshold: number; feather: number; invert?: boolean },
-): Promise<Float32Array> {
+// The expensive RMBG inference depends only on the source frame, so its
+// normalized 1024² matte is memoized per source ImageData. This makes tweaking
+// threshold/feather (and every unrelated Word-raster dial) instant instead of
+// re-running an ~8s model, and speeds Cutout too. Entries GC with their source.
+const matteInferenceCache = new WeakMap<ImageData, Float32Array>();
+
+/** Run RMBG-1.4 (once per source) and return the min/max-normalized 1024² matte. */
+async function inferMatte(source: ImageData): Promise<Float32Array> {
+  const cached = matteInferenceCache.get(source);
+  if (cached) return cached;
+
   const session = await loadSession(MODEL_PATH); // MODEL_UNAVAILABLE propagates
   const w = source.width;
   const h = source.height;
@@ -77,7 +81,7 @@ export async function computeMatte(
     data[2 * area + i] = px[p + 2] / 255 - 0.5; // B plane
   }
 
-  // 2. Inference → sigmoid matte, min/max normalize.
+  // 2. Inference → sigmoid matte, min/max normalize to 0..1.
   const ort = await getOrt();
   const inputName = session.inputNames[0];
   const outputName = session.outputNames[0];
@@ -85,23 +89,42 @@ export async function computeMatte(
   const results: any = await runModel(MODEL_PATH, {
     [inputName]: new ort.Tensor("float32", data, [1, 3, SIZE, SIZE]),
   });
-  const matte = results[outputName].data as Float32Array;
+  const raw = results[outputName].data as Float32Array;
 
   let min = Infinity;
   let max = -Infinity;
-  for (let i = 0; i < matte.length; i++) {
-    const v = matte[i];
+  for (let i = 0; i < raw.length; i++) {
+    const v = raw[i];
     if (v < min) min = v;
     if (v > max) max = v;
   }
   const range = max - min || 1;
+  const norm = new Float32Array(area);
+  for (let i = 0; i < area; i++) norm[i] = (raw[i] - min) / range;
+
+  matteInferenceCache.set(source, norm);
+  return norm;
+}
+
+/** Return a per-pixel subject alpha (0..1) at the source resolution. Shared by
+ *  the Cutout mode and Word raster's precise "subject" region. The RMBG pass is
+ *  memoized per source; only the cheap threshold/feather/stretch runs per call.
+ *  Throws MODEL_UNAVAILABLE if the model file is missing. */
+export async function computeMatte(
+  source: ImageData,
+  opts: { matteThreshold: number; feather: number; invert?: boolean },
+): Promise<Float32Array> {
+  const w = source.width;
+  const h = source.height;
+  const area = SIZE * SIZE;
+  const matte = await inferMatte(source); // already min/max-normalized 0..1
 
   // 3. Alpha from smoothstep threshold; optional feather blur; optional invert.
   const lo = opts.matteThreshold - 0.15;
   const hi = opts.matteThreshold + 0.15;
   let alpha: Float32Array = new Float32Array(area);
   for (let i = 0; i < area; i++) {
-    alpha[i] = smoothstep(lo, hi, (matte[i] - min) / range);
+    alpha[i] = smoothstep(lo, hi, matte[i]); // matte is already 0..1 normalized
   }
   const rr = Math.round(opts.feather);
   if (rr > 0) alpha = boxBlur(alpha, rr);

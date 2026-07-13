@@ -95,14 +95,16 @@ export function ParamPanel({
       </div>
 
       <div className="mt-5 flex flex-col gap-5">
-        {mode.controls.map((c) => (
-          <ControlRow
-            key={c.key}
-            control={c}
-            value={params[c.key]}
-            onChange={(v) => onChange(c.key, v)}
-          />
-        ))}
+        {mode.controls
+          .filter((c) => !c.when || c.when(params))
+          .map((c) => (
+            <ControlRow
+              key={c.key}
+              control={c}
+              value={params[c.key]}
+              onChange={(v) => onChange(c.key, v)}
+            />
+          ))}
       </div>
     </div>
   );

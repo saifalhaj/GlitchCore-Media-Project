@@ -34,7 +34,9 @@ import type {
 } from "./effects/types";
 
 // UI control descriptors — ParamPanel renders these generically per active mode.
-export type Control =
+// `when` optionally hides a control unless the current params match (so a mode
+// only shows the dials that currently apply).
+export type Control = { when?: (p: Params) => boolean } & (
   | {
       kind: "slider";
       key: string;
@@ -53,7 +55,8 @@ export type Control =
   | { kind: "toggle"; key: string; label: string }
   | { kind: "seed"; key: string; label: string }
   | { kind: "color"; key: string; label: string }
-  | { kind: "text"; key: string; label: string; placeholder?: string; maxLen?: number };
+  | { kind: "text"; key: string; label: string; placeholder?: string; maxLen?: number }
+);
 
 export type ParamValue = number | string | boolean;
 export type Params = Record<string, ParamValue>;
@@ -529,10 +532,10 @@ export const MODES: Record<ModeId, ModeDef> = {
   words: {
     id: "words",
     name: "Word raster",
-    tagline: "Semantic ASCII — the image as a grid of whole words, toned by opacity, dissolving at the edges.",
+    tagline: "Semantic ASCII — the image, or just one element, as a grid of whole words toned by opacity.",
     color: "var(--mode-words)",
     controls: [
-      { kind: "text", key: "vocabulary", label: "Words", placeholder: "space or comma separated", maxLen: 200 },
+      { kind: "text", key: "vocabulary", label: "Words", placeholder: "space or comma separated", maxLen: 200, when: (p) => p.source === "vocab" },
       {
         kind: "select",
         key: "source",
@@ -566,15 +569,26 @@ export const MODES: Record<ModeId, ModeDef> = {
           { value: "subject", label: "Subject only" },
         ],
       },
-      { kind: "slider", key: "splitAt", label: "Split / size", min: 0.1, max: 0.9, step: 0.01 },
+      {
+        kind: "slider",
+        key: "splitAt",
+        label: "Split / size",
+        min: 0.1,
+        max: 0.9,
+        step: 0.01,
+        when: (p) =>
+          (p.applyTo !== "whole" && p.applyTo !== "subject") ||
+          (p.applyTo === "subject" && p.subjectDetect === "fast"),
+      },
       {
         kind: "select",
         key: "subjectDetect",
         label: "Subject find",
         options: [
-          { value: "precise", label: "Precise · cutout" },
+          { value: "precise", label: "Precise · cutout (still)" },
           { value: "fast", label: "Fast · video" },
         ],
+        when: (p) => p.applyTo === "subject",
       },
       {
         kind: "select",
@@ -586,13 +600,14 @@ export const MODES: Record<ModeId, ModeDef> = {
           { value: "paper", label: "Paper" },
           { value: "remove", label: "Remove" },
         ],
+        when: (p) => p.applyTo !== "whole",
       },
-      { kind: "slider", key: "matteTighten", label: "Edge tighten", min: 0, max: 1, step: 0.01 },
-      { kind: "slider", key: "matteFeather", label: "Edge feather", min: 0, max: 8, step: 1, unit: "px" },
-      { kind: "slider", key: "shadow", label: "Drop shadow", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "matteTighten", label: "Matte tighten", min: 0, max: 1, step: 0.01, when: (p) => p.applyTo === "subject" && p.subjectDetect === "precise" },
+      { kind: "slider", key: "matteFeather", label: "Matte feather", min: 0, max: 8, step: 1, unit: "px", when: (p) => p.applyTo === "subject" && p.subjectDetect === "precise" },
+      { kind: "slider", key: "shadow", label: "Drop shadow", min: 0, max: 1, step: 0.01, when: (p) => p.applyTo !== "whole" },
       { kind: "toggle", key: "autoColor", label: "Auto color" },
-      { kind: "slider", key: "bgFade", label: "Fade amount", min: 0, max: 1, step: 0.01 },
-      { kind: "slider", key: "edgeFade", label: "Edge blend", min: 0, max: 1, step: 0.01 },
+      { kind: "slider", key: "bgFade", label: "Background fade", min: 0, max: 1, step: 0.01, when: (p) => p.applyTo !== "whole" && p.background === "fade" },
+      { kind: "slider", key: "edgeFade", label: "Region blend", min: 0, max: 1, step: 0.01, when: (p) => p.applyTo !== "whole" },
       { kind: "slider", key: "columns", label: "Columns", min: 12, max: 72, step: 1, unit: "w" },
       {
         kind: "select",
@@ -603,7 +618,7 @@ export const MODES: Record<ModeId, ModeDef> = {
           { value: "weight", label: "Weight" },
         ],
       },
-      { kind: "color", key: "highlight", label: "Highlight" },
+      { kind: "color", key: "highlight", label: "Highlight", when: (p) => !p.autoColor },
       { kind: "slider", key: "highlightThreshold", label: "Highlight at", min: 0, max: 1, step: 0.01 },
       { kind: "slider", key: "dissolve", label: "Edge dissolve", min: 0, max: 1, step: 0.01 },
       {

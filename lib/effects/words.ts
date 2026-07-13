@@ -23,8 +23,15 @@ const DEFAULT_VOCAB = [
   "fragment",
   "memory",
   "trace",
-  "static",
 ];
+
+// Matte alpha above this counts a pixel/cell as "inside the subject" — one source
+// of truth shared by the region test, the accent sampler, and the text export.
+const MATTE_INCLUDE = 0.4;
+// Crash guards for extreme aspect ratios: bound the fillText count and the raster
+// area so a very tall/wide crop can't hang or OOM the tab.
+const MAX_RASTER_CELLS = 130_000;
+const MAX_RASTER_AREA = 16_000_000; // ~16 MP
 
 // 30 latin words for the "lorem" source.
 const LOREM = [
@@ -128,14 +135,46 @@ function saliencyCells(
       if (d > maxD) maxD = d;
     }
   }
-  const cells = new Uint8Array(cols * rows);
-  for (let i = 0; i < detail.length; i++) cells[i] = detail[i] / maxD >= cutoff ? 1 : 0;
+  const total = cols * rows;
+  const cells = new Uint8Array(total);
+  let count = 0;
+  for (let i = 0; i < total; i++) {
+    if (detail[i] / maxD >= cutoff) {
+      cells[i] = 1;
+      count++;
+    }
+  }
+  // Never yield a near-empty region: if a high cutoff selected too little, keep
+  // the top ~15% most-salient cells instead so the subject always has a body.
+  const floor = Math.max(1, Math.round(total * 0.08));
+  if (count < floor) {
+    const order = Array.from({ length: total }, (_, i) => i).sort(
+      (a, b) => detail[b] - detail[a],
+    );
+    const keep = Math.min(total, Math.round(total * 0.15));
+    cells.fill(0);
+    for (let k = 0; k < keep; k++) cells[order[k]] = 1;
+  }
   return cells;
 }
 
-/** Sample a representative accent colour from the wordified region — a
- *  saturation-weighted average (vivid pixels dominate), then punched up. Lets
- *  the highlight words match the element's own colour (e.g. a red jacket). */
+function hue(r: number, g: number, b: number): number {
+  const mx = Math.max(r, g, b);
+  const c = mx - Math.min(r, g, b);
+  if (c === 0) return 0;
+  let h: number;
+  if (mx === r) h = ((g - b) / c) % 6;
+  else if (mx === g) h = (b - r) / c + 2;
+  else h = (r - g) / c + 4;
+  h *= 60;
+  return h < 0 ? h + 360 : h;
+}
+const clamp255 = (v: number) => Math.round(Math.max(0, Math.min(255, v)));
+
+/** Sample a representative accent colour from the wordified region — the DOMINANT
+ *  hue (a saturation×value-weighted histogram vote), not a plain average, so a
+ *  mixed-colour subject picks its signature colour instead of averaging to mud.
+ *  Falls back to a saturation-weighted mean on near-monochrome regions. */
 function computeAccent(
   source: ImageData,
   applyTo: string,
@@ -152,7 +191,7 @@ function computeAccent(
   const inTest = (x: number, y: number, i: number): boolean => {
     switch (applyTo) {
       case "subject":
-        if (hasMask) return mask![i] > 0.4;
+        if (hasMask) return mask![i] > MATTE_INCLUDE;
         if (cells && cols && rows) {
           const cx = Math.min(cols - 1, Math.floor((x * cols) / sw));
           const cy = Math.min(rows - 1, Math.floor((y * rows) / sh));
@@ -171,10 +210,18 @@ function computeAccent(
         return true;
     }
   };
-  let R = 0;
-  let G = 0;
-  let B = 0;
-  let W = 0;
+
+  const BINS = 24;
+  const binW = new Float32Array(BINS);
+  const binR = new Float32Array(BINS);
+  const binG = new Float32Array(BINS);
+  const binB = new Float32Array(BINS);
+  // Fallback (near-monochrome regions): saturation-weighted mean, as before.
+  let mR = 0;
+  let mG = 0;
+  let mB = 0;
+  let mW = 0;
+
   for (let y = 0; y < sh; y += 3) {
     for (let x = 0; x < sw; x += 3) {
       const i = y * sw + x;
@@ -184,21 +231,68 @@ function computeAccent(
       const g = d[p + 1];
       const b = d[p + 2];
       const mx = Math.max(r, g, b);
-      const mn = Math.min(r, g, b);
-      const sat = mx > 0 ? (mx - mn) / mx : 0;
-      const w = sat * sat + 0.02; // vivid pixels dominate; tiny floor for greys
-      R += r * w;
-      G += g * w;
-      B += b * w;
-      W += w;
+      const sat = mx > 0 ? (mx - Math.min(r, g, b)) / mx : 0;
+      const val = mx / 255;
+      const fw = sat * sat + 0.02;
+      mR += r * fw;
+      mG += g * fw;
+      mB += b * fw;
+      mW += fw;
+      if (sat < 0.15 || val < 0.1) continue; // ignore greys/blacks for the hue vote
+      const bin = Math.min(BINS - 1, Math.floor(hue(r, g, b) / (360 / BINS)));
+      const w = sat * val;
+      binW[bin] += w;
+      binR[bin] += r * w;
+      binG[bin] += g * w;
+      binB[bin] += b * w;
     }
   }
-  if (W <= 0) return null;
-  const mean = (R + G + B) / (3 * W);
-  const boost = 1.5;
-  const ch = (v: number) =>
-    Math.round(Math.max(0, Math.min(255, mean + (v / W - mean) * boost)));
-  return rgbToHex(ch(R), ch(G), ch(B));
+
+  let peak = -1;
+  let peakW = 0;
+  for (let b = 0; b < BINS; b++) {
+    if (binW[b] > peakW) {
+      peakW = binW[b];
+      peak = b;
+    }
+  }
+
+  if (peak < 0) {
+    // No vivid pixels → keep old behaviour (mean) or the user's highlight.
+    if (mW <= 0) return null;
+    const mean = (mR + mG + mB) / (3 * mW);
+    const ch = (v: number) => clamp255(mean + (v / mW - mean) * 1.5);
+    return rgbToHex(ch(mR), ch(mG), ch(mB));
+  }
+
+  // Average the peak hue bin plus its two neighbours (wrapping).
+  let R = 0;
+  let G = 0;
+  let B = 0;
+  let W = 0;
+  for (const bin of [(peak + BINS - 1) % BINS, peak, (peak + 1) % BINS]) {
+    R += binR[bin];
+    G += binG[bin];
+    B += binB[bin];
+    W += binW[bin];
+  }
+  let r = R / W;
+  let g = G / W;
+  let b = B / W;
+  // Punch up saturation, and lift value so the accent stays legible on paper.
+  const mean = (r + g + b) / 3;
+  const boost = 1.55;
+  r = mean + (r - mean) * boost;
+  g = mean + (g - mean) * boost;
+  b = mean + (b - mean) * boost;
+  const mx = Math.max(r, g, b);
+  if (mx > 0 && mx < 150) {
+    const lift = 150 / mx;
+    r *= lift;
+    g *= lift;
+    b *= lift;
+  }
+  return rgbToHex(clamp255(r), clamp255(g), clamp255(b));
 }
 
 export function words(
@@ -213,7 +307,9 @@ export function words(
   const cols = Math.max(1, Math.round(params.columns));
   const cellW = sw / cols;
   // Landscape word cells (a word is wider than tall) → many short rows.
-  const rows = Math.max(1, Math.round((2 * sh) / cellW));
+  let rows = Math.max(1, Math.round((2 * sh) / cellW));
+  // Guard: an extreme aspect ratio makes rows (and the fillText count) explode.
+  if (cols * rows > MAX_RASTER_CELLS) rows = Math.max(1, Math.floor(MAX_RASTER_CELLS / cols));
 
   const seed = params.seed >>> 0;
   const pool = buildPool(params, mulberry32(seed));
@@ -252,7 +348,7 @@ export function words(
         if (hasMask) {
           const px = Math.min(sw - 1, Math.floor(((rx + 0.5) * sw) / cols));
           const py = Math.min(sh - 1, Math.floor(((ry + 0.5) * sh) / rows));
-          return mask![py * sw + px] > 0.4;
+          return mask![py * sw + px] > MATTE_INCLUDE;
         }
         return fastCells ? fastCells[ry * cols + rx] === 1 : true;
       default:
@@ -272,9 +368,16 @@ export function words(
 
   // Output: preserve source aspect so the (possibly transparent) layer composites
   // cleanly over the original. Cell width is capped for perf on video.
-  const cellPxW = Math.min(110, Math.max(18, Math.round(1600 / cols)));
-  const canvasW = cols * cellPxW;
-  const canvasH = Math.max(1, Math.round((canvasW * sh) / sw));
+  let cellPxW = Math.min(110, Math.max(18, Math.round(1600 / cols)));
+  let canvasW = cols * cellPxW;
+  let canvasH = Math.max(1, Math.round((canvasW * sh) / sw));
+  // Guard: cap the raster area (preserving aspect) so a huge crop can't OOM.
+  if (canvasW * canvasH > MAX_RASTER_AREA) {
+    const s = Math.sqrt(MAX_RASTER_AREA / (canvasW * canvasH));
+    canvasW = Math.max(cols, Math.round(canvasW * s));
+    canvasH = Math.max(1, Math.round(canvasH * s));
+  }
+  cellPxW = canvasW / cols; // may be fractional after the area clamp — fine on canvas
   const cellPxH = canvasH / rows;
 
   // --- 1. Render the FULL word raster onto its own canvas. -------------------
@@ -312,17 +415,24 @@ export function words(
       const x1 = Math.max(x0 + 1, Math.floor(((rx + 1) * sw) / cols));
 
       let sumL = 0;
+      let sumMask = 0;
       let n = 0;
       for (let y = y0; y < y1; y++) {
         let idx = (y * sw + x0) * 4;
+        let pi = y * sw + x0;
         for (let x = x0; x < x1; x++) {
           sumL += luminance(src[idx], src[idx + 1], src[idx + 2]);
+          if (hasMask) sumMask += mask![pi];
           n++;
           idx += 4;
+          pi++;
         }
       }
       const raw = clamp01(sumL / n / 255);
       const norm = params.invert ? 1 - raw : raw;
+      // Precise matte: mean silhouette coverage of this cell drives the edge fade
+      // and the text export, so boundary words dissolve instead of hard-cutting.
+      const coverage = hasMask ? sumMask / n : 1;
 
       // Per-cell deterministic stream (word choice is brightness-independent).
       const rng = mulberry32(
@@ -341,7 +451,10 @@ export function words(
       } else {
         word = pool[Math.min(pool.length - 1, Math.floor(r0 * pool.length))];
       }
-      rowWords[rx] = inR ? word : ""; // precise-matte cells outside the centre → blank in text
+      const include = hasMask ? coverage >= MATTE_INCLUDE : inR;
+      rowWords[rx] = include ? word : ""; // text export matches what's rendered
+
+      if (hasMask && coverage < 0.06) continue; // essentially outside the silhouette
 
       const nxEdge = Math.min((rx + 0.5) / cols, 1 - (rx + 0.5) / cols) * 2;
       const edgeDist = Math.min(nxEdge, nyEdge);
@@ -349,7 +462,13 @@ export function words(
 
       const weight =
         params.toneMode === "weight" ? 300 + Math.round(norm * 5) * 100 : 500;
-      ctx.globalAlpha = params.toneMode === "opacity" ? 0.3 + 0.7 * norm : 1;
+      let alpha = params.toneMode === "opacity" ? 0.3 + 0.7 * norm : 1;
+      if (hasMask) {
+        // smoothstep 0.15→0.85 coverage: edge words fade rather than get cut
+        const t = coverage <= 0.15 ? 0 : coverage >= 0.85 ? 1 : (coverage - 0.15) / 0.7;
+        alpha *= t * t * (3 - 2 * t);
+      }
+      ctx.globalAlpha = alpha;
       ctx.fillStyle = norm >= threshold ? highlight : ink;
       const text = fitWord(ctx, word, maxTextW, weight, baseSize, minSize);
       ctx.fillText(text, rx * cellPxW + cellPxW / 2, ry * cellPxH + cellPxH / 2);
@@ -380,11 +499,58 @@ export function words(
   if (bgMode === "keep" || bgMode === "fade") {
     octx.drawImage(srcCanvas, 0, 0, sw, sh, 0, 0, canvasW, canvasH);
     if (bgMode === "fade") {
-      // wash the original toward paper so the focus stays on the words.
-      octx.globalAlpha = clamp01(params.bgFade ?? 0.66);
-      octx.fillStyle = paper ? paper.bg : "#f1ede4";
+      // Radial wash toward paper: lighter near the element, deeper at the corners
+      // — adds depth-of-field focus without re-exposing the busy background.
+      const fade = clamp01(params.bgFade ?? 0.66);
+      const [pr, pg, pb] = hexToRgb(paper ? paper.bg : "#f1ede4");
+      let fx = canvasW / 2;
+      let fy = canvasH / 2;
+      if (applyTo === "subject" && hasMask) {
+        let ax = 0;
+        let ay = 0;
+        let aw = 0;
+        for (let i = 0; i < sw * sh; i += 7) {
+          const a = mask![i];
+          if (a > MATTE_INCLUDE) {
+            ax += (i % sw) * a;
+            ay += ((i / sw) | 0) * a;
+            aw += a;
+          }
+        }
+        if (aw > 0) {
+          fx = ((ax / aw) * canvasW) / sw;
+          fy = ((ay / aw) * canvasH) / sh;
+        }
+      } else if (applyTo === "subject" && fastCells) {
+        let ax = 0;
+        let ay = 0;
+        let c = 0;
+        for (let cy = 0; cy < rows; cy++)
+          for (let cx = 0; cx < cols; cx++)
+            if (fastCells[cy * cols + cx]) {
+              ax += cx;
+              ay += cy;
+              c++;
+            }
+        if (c > 0) {
+          fx = ((ax / c + 0.5) / cols) * canvasW;
+          fy = ((ay / c + 0.5) / rows) * canvasH;
+        }
+      } else {
+        // geometric half (or a subject with no mask/cells) → rect centre
+        const rx0 = applyTo === "right" ? splitCol * cellPxW : 0;
+        const rx1 = applyTo === "left" ? splitCol * cellPxW : canvasW;
+        const ry0 = applyTo === "bottom" ? splitRow * cellPxH : 0;
+        const ry1 = applyTo === "top" ? splitRow * cellPxH : canvasH;
+        fx = (rx0 + rx1) / 2;
+        fy = (ry0 + ry1) / 2;
+      }
+      const rOut = Math.hypot(Math.max(fx, canvasW - fx), Math.max(fy, canvasH - fy)) || 1;
+      const grad = octx.createRadialGradient(fx, fy, 0, fx, fy, rOut);
+      grad.addColorStop(0, `rgba(${pr},${pg},${pb},${(fade * 0.4).toFixed(3)})`);
+      grad.addColorStop(1, `rgba(${pr},${pg},${pb},${fade.toFixed(3)})`);
+      octx.fillStyle = grad;
       octx.fillRect(0, 0, canvasW, canvasH);
-      octx.globalAlpha = 1;
     }
   } else if (bgMode === "paper") {
     octx.fillStyle = paper ? paper.bg : "#efe9dc";
@@ -453,7 +619,8 @@ export function words(
   // Soft drop-shadow: a blurred, offset, dark copy of the region silhouette,
   // laid under the words so the element lifts off the background.
   const shadow = clamp01(params.shadow ?? 0);
-  if (shadow > 0) {
+  // A near-black shadow is invisible on dark paper — skip it there.
+  if (shadow > 0 && params.paper !== "dark") {
     const sc = document.createElement("canvas");
     sc.width = canvasW;
     sc.height = canvasH;
@@ -462,11 +629,13 @@ export function words(
     sx.globalCompositeOperation = "source-in";
     sx.fillStyle = "#0a0b0d";
     sx.fillRect(0, 0, canvasW, canvasH);
-    const off = Math.round(canvasW * 0.012 * (0.6 + shadow));
+    // Bias the offset downward for a grounded, contact-shadow look.
+    const offX = Math.round(canvasW * 0.006 * (0.6 + shadow));
+    const offY = Math.round(canvasW * 0.016 * (0.6 + shadow));
     octx.save();
     octx.globalAlpha = 0.5 * shadow;
     octx.filter = `blur(${Math.round(4 + 14 * shadow)}px)`;
-    octx.drawImage(sc, off, off);
+    octx.drawImage(sc, offX, offY);
     octx.restore();
   }
 

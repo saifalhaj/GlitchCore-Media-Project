@@ -23,6 +23,16 @@ const MODEL_FILES: Record<string, { name: string; file: string }> = {
 };
 const isModelMode = (m: string): boolean => m in MODEL_FILES;
 
+// Word raster's precise-subject path also runs the RMBG model (still path), so it
+// should show the loading affordance even though "words" isn't a MODEL_FILES key.
+// Kept separate from isModelMode so a missing model there degrades to the fast
+// mask silently rather than showing the "drop the model file" banner.
+const stageUsesModel = (s: Stage): boolean =>
+  isModelMode(s.mode) ||
+  (s.mode === "words" &&
+    (s.params as Record<string, unknown>).applyTo === "subject" &&
+    (s.params as Record<string, unknown>).subjectDetect === "precise");
+
 export function CanvasStage({
   source,
   stages,
@@ -126,7 +136,7 @@ export function CanvasStage({
       onStats(s);
     };
 
-    const hasModel = stages.some((s) => isModelMode(s.mode));
+    const hasModel = stages.some(stageUsesModel);
     report({ ms: 0, status: hasModel ? "loading-model" : "processing" });
 
     const run = async () => {
