@@ -180,6 +180,8 @@ export type WordsParams = {
   vocabulary: string; // whitespace/comma-separated words to draw from
   source: "vocab" | "numbers" | "lorem";
   regionMode: "mix" | "bands" | "luminance"; // how words map to image regions
+  applyTo: "whole" | "left" | "right" | "top" | "bottom" | "subject"; // confine effect to a region; rest shows original
+  splitAt: number; // 0–1: divider position for halves / detail cutoff for subject
   columns: number;
   toneMode: "opacity" | "weight"; // brightness → opacity or font-weight
   highlight: string; // #rrggbb for the brightest cells

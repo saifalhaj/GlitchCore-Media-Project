@@ -114,11 +114,91 @@ export function words(source: ImageData, params: WordsParams): EffectResult {
   canvas.height = canvasH;
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
 
-  if (paper) {
-    ctx.fillStyle = paper.bg;
-    ctx.fillRect(0, 0, canvasW, canvasH); // opaque paper
+  // Region masking: confine the word effect to part of the frame; everywhere
+  // else shows the original image, baked into a single result (the "split half"
+  // or "one element" look). Purely per-cell + client-side, so it also runs on video.
+  const applyTo = params.applyTo ?? "whole";
+  const split = clamp01(params.splitAt ?? 0.5);
+  const splitCol = Math.round(split * cols);
+  const splitRow = Math.round(split * rows);
+
+  // Subject region: a cheap per-cell saliency (edge/texture energy, centre-biased)
+  // stands in for "the main element" — no ML, so it works live on video too.
+  let subjectCell: Uint8Array | null = null;
+  if (applyTo === "subject") {
+    const detail = new Float32Array(cols * rows);
+    let maxD = 1e-6;
+    for (let cy = 0; cy < rows; cy++) {
+      const y0 = Math.floor((cy * sh) / rows);
+      const y1 = Math.max(y0 + 1, Math.floor(((cy + 1) * sh) / rows));
+      for (let cx = 0; cx < cols; cx++) {
+        const x0 = Math.floor((cx * sw) / cols);
+        const x1 = Math.max(x0 + 1, Math.floor(((cx + 1) * sw) / cols));
+        let g = 0;
+        let m = 0;
+        for (let y = y0; y < y1; y += 2) {
+          for (let x = x0; x < x1 - 1; x += 2) {
+            const i = (y * sw + x) * 4;
+            const l = luminance(src[i], src[i + 1], src[i + 2]);
+            const l2 = luminance(src[i + 4], src[i + 5], src[i + 6]);
+            g += Math.abs(l - l2);
+            m++;
+          }
+        }
+        const cxn = (cx + 0.5) / cols - 0.5;
+        const cyn = (cy + 0.5) / rows - 0.5;
+        const centre = Math.max(0, 1 - Math.hypot(cxn, cyn) * 1.6);
+        const d = (m > 0 ? g / m : 0) * (0.4 + 0.6 * centre);
+        detail[cy * cols + cx] = d;
+        if (d > maxD) maxD = d;
+      }
+    }
+    subjectCell = new Uint8Array(cols * rows);
+    for (let i = 0; i < detail.length; i++) {
+      subjectCell[i] = detail[i] / maxD >= split ? 1 : 0;
+    }
   }
-  // transparent paper: leave the canvas cleared (alpha 0) between words.
+
+  const inRegion = (cx: number, cy: number): boolean => {
+    switch (applyTo) {
+      case "right":
+        return cx >= splitCol;
+      case "left":
+        return cx < splitCol;
+      case "bottom":
+        return cy >= splitRow;
+      case "top":
+        return cy < splitRow;
+      case "subject":
+        return subjectCell![cy * cols + cx] === 1;
+      default:
+        return true;
+    }
+  };
+
+  if (applyTo === "whole") {
+    if (paper) {
+      ctx.fillStyle = paper.bg;
+      ctx.fillRect(0, 0, canvasW, canvasH); // opaque paper
+    }
+    // transparent paper: leave the canvas cleared (alpha 0) between words.
+  } else {
+    // Base = the original image; the effect region is painted over it below.
+    const tmp = document.createElement("canvas");
+    tmp.width = sw;
+    tmp.height = sh;
+    tmp.getContext("2d")!.putImageData(source, 0, 0);
+    ctx.drawImage(tmp, 0, 0, sw, sh, 0, 0, canvasW, canvasH);
+    // Opaque paper only inside a rectangular region (the geometric halves).
+    if (paper && applyTo !== "subject") {
+      const rx0 = applyTo === "right" ? splitCol * cellPxW : 0;
+      const rx1 = applyTo === "left" ? splitCol * cellPxW : canvasW;
+      const ry0 = applyTo === "bottom" ? splitRow * cellPxH : 0;
+      const ry1 = applyTo === "top" ? splitRow * cellPxH : canvasH;
+      ctx.fillStyle = paper.bg;
+      ctx.fillRect(rx0, ry0, rx1 - rx0, ry1 - ry0);
+    }
+  }
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -136,6 +216,16 @@ export function words(source: ImageData, params: WordsParams): EffectResult {
     const nyEdge = Math.min((ry + 0.5) / rows, 1 - (ry + 0.5) / rows) * 2;
 
     for (let rx = 0; rx < cols; rx++) {
+      if (!inRegion(rx, ry)) {
+        rowWords[rx] = ""; // outside the effect region → original shows through
+        continue;
+      }
+      // subject region uses per-cell paper (halves fill a rect once, above)
+      if (applyTo === "subject" && paper) {
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = paper.bg;
+        ctx.fillRect(rx * cellPxW, ry * cellPxH, cellPxW + 1, cellPxH + 1);
+      }
       const x0 = Math.floor((rx * sw) / cols);
       const x1 = Math.max(x0 + 1, Math.floor(((rx + 1) * sw) / cols));
 
