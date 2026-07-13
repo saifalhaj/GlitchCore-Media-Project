@@ -179,6 +179,7 @@ export type LowPolyParams = {
 export type WordsParams = {
   vocabulary: string; // whitespace/comma-separated words to draw from
   source: "vocab" | "numbers" | "lorem";
+  regionMode: "mix" | "bands" | "luminance"; // how words map to image regions
   columns: number;
   toneMode: "opacity" | "weight"; // brightness → opacity or font-weight
   highlight: string; // #rrggbb for the brightest cells

@@ -149,15 +149,28 @@ export function words(source: ImageData, params: WordsParams): EffectResult {
           idx += 4;
         }
       }
-      let norm = clamp01(sumL / n / 255);
-      if (params.invert) norm = 1 - norm;
+      const raw = clamp01(sumL / n / 255);
+      const norm = params.invert ? 1 - raw : raw;
 
       // Per-cell deterministic stream (word choice is brightness-independent).
       const rng = mulberry32(
         (seed ^ Math.imul(rx, 0x9e3779b1) ^ Math.imul(ry, 0x85ebca77)) >>> 0
       );
-      const word = pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+      const r0 = rng();
       const dropRoll = rng();
+      // Region → word. "bands": the ordered vocabulary maps top→bottom, so
+      // "clouds boat ocean" paints sky/boat/sea as their own labels. "luminance":
+      // scene brightness picks the word (dark→first … bright→last word). "mix":
+      // a random word per cell across the whole pool (the original behavior).
+      let word: string;
+      if (params.regionMode === "bands") {
+        const band = Math.min(pool.length - 1, Math.floor((ry / rows) * pool.length));
+        word = pool[band];
+      } else if (params.regionMode === "luminance") {
+        word = pool[Math.min(pool.length - 1, Math.floor(raw * pool.length))];
+      } else {
+        word = pool[Math.min(pool.length - 1, Math.floor(r0 * pool.length))];
+      }
       rowWords[rx] = word; // grid stays rectangular even for dropped cells
 
       const nxEdge = Math.min((rx + 0.5) / cols, 1 - (rx + 0.5) / cols) * 2;

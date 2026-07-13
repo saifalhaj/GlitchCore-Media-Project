@@ -543,6 +543,16 @@ export const MODES: Record<ModeId, ModeDef> = {
           { value: "lorem", label: "Lorem" },
         ],
       },
+      {
+        kind: "select",
+        key: "regionMode",
+        label: "Regions",
+        options: [
+          { value: "mix", label: "Mixed" },
+          { value: "bands", label: "Bands (top→bottom)" },
+          { value: "luminance", label: "By brightness" },
+        ],
+      },
       { kind: "slider", key: "columns", label: "Columns", min: 12, max: 72, step: 1, unit: "w" },
       {
         kind: "select",
@@ -573,6 +583,7 @@ export const MODES: Record<ModeId, ModeDef> = {
     defaults: {
       vocabulary: "workspace memory context model reason token weight signal",
       source: "vocab",
+      regionMode: "mix",
       columns: 28,
       toneMode: "opacity",
       highlight: "#e0603a",
